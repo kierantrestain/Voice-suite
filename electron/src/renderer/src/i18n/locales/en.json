@@ -132,7 +132,7 @@
     "all": "All",
     "allContributors": "All contributors",
     "coreMaintainer": "Core maintainer",
-    "title": "VoiceStudio.sh Open Source",
+    "title": "Voice Suite",
     "design": "Design a voice from a description.",
     "dub": "Translate and dub audio or video.",
     "stories": "Create scenes with multiple voices.",
@@ -325,7 +325,7 @@
     "voice_note": "A voice's own entries win over the language dictionary whenever that voice speaks."
   },
   "app": {
-    "name": "VoiceStudio",
+    "name": "Voice Suite",
     "version": "v{{version}}",
     "version_dev": "v{{version}} · Dev",
     "switch_to_light": "Switch to light theme",

@@ -18,11 +18,21 @@ it('opens the current workflow, lets users collapse it, and follows route change
   const { rerender } = render(<WorkspaceNavigation />);
   const voice = screen.getByRole('button', { name: 'nav.voice' });
   expect(voice).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('link', { name: 'nav.saved' })).toHaveAttribute('href', '/personas');
   expect(screen.getByRole('link', { name: 'nav.gallery' })).toHaveAttribute('href', '/gallery');
+  expect(screen.getByRole('link', { name: 'nav.transcribe' })).toHaveAttribute(
+    'href',
+    '/transcriptions',
+  );
+  expect(screen.getByRole('link', { name: 'nav.dictation' })).toHaveAttribute(
+    'href',
+    '/transcriptions',
+  );
   expect(screen.getByRole('link', { name: 'workflows.title' })).toHaveAttribute(
     'href',
     '/workflows',
   );
+  expect(screen.getByRole('link', { name: 'nav.settings' })).toHaveAttribute('href', '/settings');
   fireEvent.click(voice);
   expect(voice).toHaveAttribute('aria-expanded', 'false');
   route.pathname = '/audiobook';

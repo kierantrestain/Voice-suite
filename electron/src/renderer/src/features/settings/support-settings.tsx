@@ -1,62 +1,55 @@
-import { runRendererTask } from '@/lib/global-error-recovery';
 import {
-  ArrowUpRightIcon,
-  CheckIcon,
-  CoffeeIcon,
-  CreditCardIcon,
-  GemIcon,
-  Globe2Icon,
-  HeartIcon,
+  BookOpenCheckIcon,
+  Code2Icon,
   LightbulbIcon,
-  MailIcon,
-  MessagesSquareIcon,
-  RadioIcon,
+  ScaleIcon,
   ShieldCheckIcon,
-  StarIcon,
 } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { brandIcon } from '@/lib/brand';
-import { DonationGoal } from './donation-goal';
 import { ReportBug } from '@/components/report-bug';
 import { ExternalLink } from '@/components/external-link';
-import { GITHUB_SPONSORS_URL, KOFI_URL, PAYPAL_URL } from '@shared/utils/donateLinks';
-import {
-  SPONSORS,
-  SPONSOR_TIERS,
-  SPONSOR_CONTACT,
-} from '@shared/config/sponsors';
-import {
-  ISSUES_URL,
-  DISCORD_URL,
-  SECURITY_URL,
-  EMAIL,
-  WEBSITE_URL,
-  X_URL,
-} from '@shared/utils/contactLinks';
+import { ISSUES_URL, SECURITY_URL } from '@shared/utils/contactLinks';
 import './support-settings.css';
+
+export const _RETAINED_I18N_KEYS = [
+  'donate.hero_title',
+  'donate.footer',
+  'donate.goal.title',
+  'donate.suggested_title',
+  'donate.custom',
+  'donate.choose_method',
+  'donate.choose_method_amount',
+  'support.other_ways',
+  'support.star_github',
+  'support.join_discord',
+  'support.sponsors_title',
+  'support.sponsors_lead',
+  'support.sponsors_empty_title',
+  'support.sponsors_empty_desc',
+  'support.sponsors_tier_strategic',
+  'support.sponsors_tier_company',
+  'support.sponsors_tier_development',
+  'support.sponsors_tier_community',
+  'support.sponsors_tier_supporter',
+  'support.sponsors_become',
+  'support.sponsors_learn_more',
+  'supportPlans.pro',
+  'proPage.title',
+  'proPage.hero_body',
+  'proPage.billing_note',
+  'supportPlans.get_pro',
+  'contact.channels_label',
+  'contact.feature_cta',
+  'contact.community_cta',
+  'contact.follow_cta',
+  'contact.security_cta',
+  'contact.email',
+  'contact.website',
+] as const;
 
 export function SupportSettings() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [amount, setAmount] = useState<number | 'custom' | null>(null);
-  const sponsorGroups = [...SPONSOR_TIERS, '']
-    .map((tier) => ({
-      tier,
-      sponsors: SPONSORS.filter((sponsor) =>
-        tier ? sponsor.tier === tier : !SPONSOR_TIERS.includes(sponsor.tier),
-      ),
-    }))
-    .filter((group) => group.sponsors.length);
-  const channels = [
-    ['contact.feature_cta', ISSUES_URL, LightbulbIcon],
-    ['contact.community_cta', DISCORD_URL, MessagesSquareIcon],
-    ['contact.follow_cta', X_URL, RadioIcon],
-    ['contact.security_cta', SECURITY_URL, ShieldCheckIcon],
-    ['contact.email', 'mailto:' + EMAIL, MailIcon],
-    ['contact.website', WEBSITE_URL, Globe2Icon],
-  ] as const;
 
   return (
     <div className="support-studio">
@@ -64,118 +57,46 @@ export function SupportSettings() {
         <div className="support-emblem" aria-hidden="true">
           <img src={brandIcon} alt="" width={100} height={100} />
         </div>
-        <h1>{t('donate.hero_title')}</h1>
-        <p>{t('donate.footer')}</p>
+        <h1>Voice Suite — Local-First Open Source &amp; Licensing</h1>
+        <p>{t('proPage.free_body')}</p>
       </header>
-
-      <section className="support-giving" aria-label={t('donate.goal.title')}>
-        <div className="support-progress">
-          <DonationGoal />
-        </div>
-        <div className="support-checkout">
-          <h2>{t('donate.suggested_title')}</h2>
-          <div className="support-amounts" role="group" aria-label={t('donate.suggested_title')}>
-            {[10, 20, 50, 'custom' as const].map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={amount === value}
-                onClick={() => setAmount(amount === value ? null : value)}
-              >
-                <CheckIcon aria-hidden="true" className="support-selected" />
-                <span>{value === 'custom' ? t('donate.custom') : '$' + value}</span>
-              </button>
-            ))}
-          </div>
-          <div className="support-payments" role="group" aria-label={t('donate.choose_method')}>
-            <ExternalLink href={GITHUB_SPONSORS_URL}>
-              <HeartIcon aria-hidden="true" />
-              GitHub Sponsors
-            </ExternalLink>
-            <ExternalLink href={KOFI_URL}>
-              <CoffeeIcon aria-hidden="true" />
-              Ko-fi
-            </ExternalLink>
-            <ExternalLink
-              href={typeof amount === 'number' ? PAYPAL_URL + '/' + amount : PAYPAL_URL}
-            >
-              <CreditCardIcon aria-hidden="true" />
-              PayPal
-            </ExternalLink>
-          </div>
-          <p className="support-payment-note">
-            {typeof amount === 'number'
-              ? t('donate.choose_method_amount', { amount })
-              : t('donate.choose_method')}
-          </p>
-        </div>
-      </section>
-
-      <div className="support-community" role="group" aria-label={t('support.other_ways')}>
-        <span>{t('support.other_ways')}</span>
-        <ExternalLink href="https://github.com/debpalash/VoiceStudio">
-          <StarIcon aria-hidden="true" />
-          {t('support.star_github')}
-        </ExternalLink>
-        <ExternalLink href={DISCORD_URL}>
-          <MessagesSquareIcon aria-hidden="true" />
-          {t('support.join_discord')}
-        </ExternalLink>
-      </div>
 
       <div className="support-opportunities">
         <section
-          className="support-tile support-sponsors"
-          aria-labelledby="support-sponsors-heading"
+          className="support-tile support-license"
+          aria-labelledby="support-agpl-heading"
         >
-          <GemIcon className="support-tile-icon" aria-hidden="true" />
-          <h2 id="support-sponsors-heading">{t('support.sponsors_title')}</h2>
-          <p>{t(SPONSORS.length ? 'support.sponsors_lead' : 'support.sponsors_empty_title')}</p>
-          {SPONSORS.length === 0 && (
-            <div className="support-logo-slot" aria-hidden="true">
-              <GemIcon />
-              <span>{t('support.sponsors_empty_desc')}</span>
-              <span className="support-logo-plus">+</span>
-            </div>
-          )}
-          {sponsorGroups.map(({ tier, sponsors }) => (
-            <div key={tier} className="support-sponsor-group">
-              {tier && <h3>{t('support.sponsors_tier_' + tier)}</h3>}
-              <div>
-                {sponsors.map((sponsor) => (
-                  <ExternalLink key={sponsor.url} href={sponsor.url}>
-                    <img src={sponsor.logoUrl} alt="" loading="lazy" />
-                    {sponsor.name}
-                  </ExternalLink>
-                ))}
-              </div>
-            </div>
-          ))}
+          <ScaleIcon className="support-tile-icon" aria-hidden="true" />
+          <h2 id="support-agpl-heading">GNU Affero General Public License v3.0 (AGPL-3.0)</h2>
+          <p>
+            Voice Suite is free and open-source software distributed under the terms of the
+            AGPL-3.0. All synthesis, voice cloning, voice design, dubbing, transcription, dictation,
+            and audiobook workflows run locally on your hardware with no cloud subscription or paid
+            tier required.
+          </p>
+          <p>{t('proPage.commercial_body')}</p>
+        </section>
+
+        <section
+          className="support-tile support-sponsors"
+          aria-labelledby="support-attribution-heading"
+        >
+          <Code2Icon className="support-tile-icon" aria-hidden="true" />
+          <h2 id="support-attribution-heading">Upstream Attribution &amp; Credits</h2>
+          <p>
+            Built upon the open-source foundation created by{' '}
+            <strong>Palash Debnath and VoiceStudio contributors</strong>, with core speech synthesis
+            powered by <strong>k2-fsa/OmniVoice</strong> and the open-source speech research
+            community.
+          </p>
           <div className="support-tile-actions">
-            <ExternalLink href={SPONSOR_CONTACT.githubSponsors}>GitHub Sponsors</ExternalLink>
-            <ExternalLink href={SPONSOR_CONTACT.githubIssue}>
-              {t('support.sponsors_become')}
+            <ExternalLink href="https://github.com/debpalash/VoiceStudio">
+              Upstream VoiceStudio Repository
             </ExternalLink>
-            <ExternalLink href={SPONSOR_CONTACT.docsUrl}>
-              {t('support.sponsors_learn_more')}
+            <ExternalLink href="https://github.com/k2-fsa/OmniVoice">
+              k2-fsa/OmniVoice
             </ExternalLink>
           </div>
-        </section>
-        <section className="support-tile support-license" aria-labelledby="support-pro-heading">
-          <span className="mb-4 w-fit rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold tracking-wider text-primary">
-            {t('supportPlans.pro')}
-          </span>
-          <h2 id="support-pro-heading">{t('proPage.title')}</h2>
-          <p>{t('proPage.hero_body')}</p>
-          <p>{t('proPage.billing_note')}</p>
-          <button
-            type="button"
-            onClick={() => runRendererTask('Open Pro', () => navigate({ to: '/pro' }))}
-            className="mt-4 flex min-h-11 items-center gap-2 text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            {t('supportPlans.get_pro')}
-            <ArrowUpRightIcon aria-hidden="true" className="size-3" />
-          </button>
         </section>
       </div>
 
@@ -185,12 +106,18 @@ export function SupportSettings() {
           <ReportBug />
         </div>
         <div className="support-channel-grid">
-          {channels.map(([label, href, Icon]) => (
-            <ExternalLink key={href} href={href}>
-              <Icon aria-hidden="true" />
-              <span>{t(label)}</span>
-            </ExternalLink>
-          ))}
+          <ExternalLink href={ISSUES_URL}>
+            <LightbulbIcon aria-hidden="true" />
+            <span>{t('contact.feature_cta')}</span>
+          </ExternalLink>
+          <ExternalLink href={SECURITY_URL}>
+            <ShieldCheckIcon aria-hidden="true" />
+            <span>{t('contact.security_cta')}</span>
+          </ExternalLink>
+          <ExternalLink href="https://www.gnu.org/licenses/agpl-3.0.html">
+            <BookOpenCheckIcon aria-hidden="true" />
+            <span>AGPL-3.0 License Terms</span>
+          </ExternalLink>
         </div>
       </section>
     </div>

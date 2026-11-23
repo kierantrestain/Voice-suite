@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
 import { Link, useRouterState } from '@tanstack/react-router';
 import {
   AudioLinesIcon,
+  AudioWaveformIcon,
   FingerprintIcon,
   BookOpenIcon,
   FolderIcon,
@@ -12,6 +13,7 @@ import {
   FilmIcon,
   WandSparklesIcon,
   MicIcon,
+  SettingsIcon,
   UsersRoundIcon,
   ChevronRightIcon,
   BlocksIcon,
@@ -37,7 +39,8 @@ type Destination = readonly [
     | '/transcriptions'
     | '/personas'
     | '/workflows'
-    | '/integrations',
+    | '/integrations'
+    | '/settings',
   label: string,
   icon: typeof AudioLinesIcon,
   activate?: () => void,
@@ -46,9 +49,9 @@ type Destination = readonly [
 const openSaved = () => setWorkspace({ libraryOpen: true, libraryTab: 'voices' });
 
 const voiceDestinations: Destination[] = [
+  ['/personas', 'nav.saved', UsersRoundIcon, openSaved],
   ['/clone', 'nav.clone_short', FingerprintIcon, openSaved],
   ['/design', 'designWorkspace.title', WandSparklesIcon],
-  ['/personas', 'nav.saved', UsersRoundIcon, openSaved],
   ['/gallery', 'nav.gallery', LibraryIcon],
 ];
 const storyDestinations: Destination[] = [
@@ -61,10 +64,12 @@ const dubDestinations: Destination[] = [
 ];
 const laterDestinations: Destination[] = [
   ['/transcriptions', 'nav.transcribe', MicIcon],
+  ['/transcriptions', 'nav.dictation', AudioWaveformIcon],
   ['/workflows', 'workflows.title', WorkflowIcon],
   ['/projects', 'projects.title', FolderIcon],
   ['/tools', 'tools.title', WrenchIcon],
   ['/integrations', 'integrationCatalog.title', BlocksIcon],
+  ['/settings', 'nav.settings', SettingsIcon],
 ];
 
 const itemClass =
@@ -86,6 +91,7 @@ const iconMotion: Record<Destination[0], string> = {
   '/projects': 'lift',
   '/tools': 'tilt',
   '/integrations': 'turn',
+  '/settings': 'turn',
 };
 
 function NavigationLink({
@@ -120,11 +126,15 @@ function NavigationLink({
               ? 'gap-2 px-2'
               : 'gap-2.5 px-2.5',
       )}
-      activeProps={{
-        className:
-          'bg-sidebar-accent/80 text-sidebar-foreground shadow-sm ring-1 ring-inset ring-sidebar-border/60',
-        'aria-current': 'page',
-      }}
+      activeProps={
+        label === 'nav.dictation'
+          ? undefined
+          : {
+              className:
+                'bg-sidebar-accent/80 text-sidebar-foreground shadow-sm ring-1 ring-inset ring-sidebar-border/60',
+              'aria-current': 'page',
+            }
+      }
     >
       <Icon
         className={iconClass}
@@ -275,7 +285,7 @@ function NavigationGroup({
           <div>
             {children.map((destination) => (
               <NavigationLink
-                key={destination[0]}
+                key={destination[1]}
                 destination={destination}
                 flyout
                 onCurrentRoute={pathname === destination[0] ? () => setPopupOpen(false) : undefined}
@@ -322,7 +332,7 @@ function NavigationGroup({
         <div className="overflow-hidden">
           <div className="ml-[1.08rem] mt-0.5 space-y-0.5 border-l border-sidebar-border/60 pl-2">
             {children.map((destination) => (
-              <NavigationLink key={destination[0]} destination={destination} nested />
+              <NavigationLink key={destination[1]} destination={destination} nested />
             ))}
           </div>
         </div>
@@ -367,7 +377,7 @@ export function WorkspaceNavigation({ compact = false }: { compact?: boolean }) 
         pathname={pathname}
       />
       {laterDestinations.map((destination) => (
-        <NavigationLink key={destination[0]} destination={destination} compact={compact} />
+        <NavigationLink key={destination[1]} destination={destination} compact={compact} />
       ))}
     </nav>
   );

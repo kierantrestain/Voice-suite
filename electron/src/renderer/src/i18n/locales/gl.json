@@ -132,7 +132,7 @@
     "all": "Todos",
     "allContributors": "Todos os colaboradores",
     "coreMaintainer": "Mantedor do núcleo",
-    "title": "VoiceStudio.sh Código aberto",
+    "title": "Voice Suite",
     "design": "Deseña unha voz a partir dunha descrición.",
     "dub": "Traduce e duplica audio ou vídeo.",
     "stories": "Crea escenas con varias voces.",
@@ -325,7 +325,7 @@
     "voice_note": "As entradas propias dunha voz teñen prioridade sobre o dicionario do idioma cando esa voz fala."
   },
   "app": {
-    "name": "VoiceStudio",
+    "name": "Voice Suite",
     "version": "v{{version}}",
     "version_dev": "v{{version}} · Dev",
     "switch_to_light": "Cambia ao tema claro",
