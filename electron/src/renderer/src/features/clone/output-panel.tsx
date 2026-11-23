@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { SaveAudioButton } from '@/components/save-audio-button';
 import { WaveformPlayer } from '@/components/waveform-player';
-import { audioMp3Url, audioUrl } from '@/lib/api/client';
+import { audioFlacUrl, audioMp3Url, audioUrl, audioWav24Url } from '@/lib/api/client';
 import { clearLatestOutput, useLatestOutput } from '@/lib/store/output';
 import { activePlaybackSource, stopActivePlayback } from '@/lib/audio/playback';
 import { formatSeconds } from './format';
@@ -41,7 +41,9 @@ export function OutputPanel() {
             <SaveAudioButton
               url={result.audioPath ? audioUrl(result.audioPath) : undefined}
               mp3Url={result.audioPath ? audioMp3Url(result.audioPath) : undefined}
-              suggestedName={`voicestudio-${result.id ?? stamp}.wav`}
+              flacUrl={result.audioPath ? audioFlacUrl(result.audioPath) : undefined}
+              wav24Url={result.audioPath ? audioWav24Url(result.audioPath) : undefined}
+              suggestedName={`voicesuite-${result.id ?? stamp}.wav`}
             />
             <Button
               variant="ghost"

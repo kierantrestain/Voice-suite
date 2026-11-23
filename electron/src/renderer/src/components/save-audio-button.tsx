@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 export function SaveAudioButton({
   url,
   mp3Url,
+  flacUrl,
+  wav24Url,
   suggestedName,
   disabled = false,
   iconOnly = false,
@@ -23,6 +25,10 @@ export function SaveAudioButton({
   url?: string;
   /** When set, a format menu beside the button also offers an MP3 export. */
   mp3Url?: string;
+  /** Optional lossless FLAC export URL (auto-derived when mp3Url is a backend /audio/<id>.mp3). */
+  flacUrl?: string;
+  /** Optional 24-bit / 48 kHz WAV export URL (auto-derived when mp3Url is a backend /audio/<id>.mp3). */
+  wav24Url?: string;
   suggestedName: string;
   disabled?: boolean;
   /** A compact secondary action: the label becomes the tooltip. */
@@ -76,13 +82,20 @@ export function SaveAudioButton({
       {iconOnly ? null : t('clone.download')}
     </Button>
   );
-  if (!mp3Url) return button;
+  if (!mp3Url && !flacUrl && !wav24Url) return button;
+
+  const mp3Match = mp3Url ? /^(.*\/audio\/[0-9a-f]{8})\.mp3$/.exec(mp3Url) : null;
+  const resolvedFlacUrl = flacUrl ?? (mp3Match ? `${mp3Match[1]}.flac` : undefined);
+  const resolvedWav24Url = wav24Url ?? (mp3Match ? `${mp3Match[1]}_24bit.wav` : undefined);
 
   const choose = (target: string, name: string) => {
     setMenuOpen(false);
     void save(target, name);
   };
-  const mp3Name = suggestedName.replace(/\.wav$/i, '') + '.mp3';
+  const baseName = suggestedName.replace(/\.wav$/i, '');
+  const mp3Name = `${baseName}.mp3`;
+  const flacName = `${baseName}.flac`;
+  const wav24Name = `${baseName}_24bit.wav`;
 
   return (
     <div className="flex items-center">
@@ -96,7 +109,7 @@ export function SaveAudioButton({
         >
           <ChevronDownIcon aria-hidden="true" className="size-3 opacity-70" />
         </PopoverTrigger>
-        <PopoverContent align="end" className="flex min-w-40 flex-col p-1">
+        <PopoverContent align="end" className="flex min-w-44 flex-col p-1">
           <Button
             variant="ghost"
             size="sm"
@@ -105,16 +118,39 @@ export function SaveAudioButton({
           >
             {t('clone.download_wav')}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start"
-            onClick={() => choose(mp3Url, mp3Name)}
-          >
-            {t('clone.download_mp3')}
-          </Button>
+          {resolvedWav24Url && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start"
+              onClick={() => choose(resolvedWav24Url, wav24Name)}
+            >
+              WAV 24-bit (48 kHz)
+            </Button>
+          )}
+          {resolvedFlacUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start"
+              onClick={() => choose(resolvedFlacUrl, flacName)}
+            >
+              FLAC
+            </Button>
+          )}
+          {mp3Url && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start"
+              onClick={() => choose(mp3Url, mp3Name)}
+            >
+              {t('clone.download_mp3')}
+            </Button>
+          )}
         </PopoverContent>
       </Popover>
     </div>
   );
 }
+

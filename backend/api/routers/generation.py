@@ -204,6 +204,60 @@ async def generated_mp3(audio_id: str, request: Request):
         ) from exc
     return Response(encoded, media_type="audio/mpeg")
 
+
+@router.get(
+    "/audio/{audio_id}.flac",
+    dependencies=[Depends(reject_cross_site_get)],
+    **_binary_audio("audio/flac"),
+)
+async def generated_flac(audio_id: str, request: Request):
+    """Serve the same render as /audio/<id>.wav, encoded as lossless FLAC for export."""
+    if not re.fullmatch(r"[0-9a-f]{8}", audio_id):
+        return await _static_output_fallback(request, f"{audio_id}.flac")
+    path = _safe_output_path(f"{audio_id}.wav")
+    if path is None or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    from services.audio_io import encode_flac
+    try:
+        encoded = await encode_flac(path)
+    except asyncio.TimeoutError as exc:
+        logger.warning("FLAC encoding timed out")
+        raise HTTPException(
+            status_code=503, detail="FLAC encoding timed out; try again later"
+        ) from exc
+    except (RuntimeError, ValueError, OSError) as exc:
+        logger.warning("FLAC encoding failed: %s", log_safe(exc))
+        raise HTTPException(
+            status_code=503,
+            detail=f"{scrub_text(str(exc))}. Check ffmpeg in Settings → Audio tools, then try again.",
+        ) from exc
+    return Response(encoded, media_type="audio/flac")
+
+
+@router.get(
+    "/audio/{audio_id}_24bit.wav",
+    dependencies=[Depends(reject_cross_site_get)],
+    **_binary_audio("audio/wav"),
+)
+async def generated_wav24(audio_id: str, request: Request):
+    """Serve the same render as /audio/<id>.wav, encoded as 24-bit / 48 kHz production WAV."""
+    if not re.fullmatch(r"[0-9a-f]{8}", audio_id):
+        return await _static_output_fallback(request, f"{audio_id}_24bit.wav")
+    path = _safe_output_path(f"{audio_id}.wav")
+    if path is None or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    from services.audio_io import encode_wav_production
+    try:
+        encoded = await encode_wav_production(path)
+    except (RuntimeError, ValueError, OSError) as exc:
+        logger.warning("24-bit WAV encoding failed: %s", log_safe(exc))
+        raise HTTPException(
+            status_code=503,
+            detail=f"24-bit WAV export failed: {scrub_text(str(exc))}",
+        ) from exc
+    return Response(encoded, media_type="audio/wav")
+
+
 # Same containers POST /profiles stores for a clone reference. /generate used
 # to write every upload with suffix=".wav"; pydub then passes -f wav to ffmpeg,
 # so an MP3/M4A/WebM one-shot clip failed to decode while a saved voice of the

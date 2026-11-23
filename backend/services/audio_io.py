@@ -341,6 +341,81 @@ async def encode_mp3(wav: bytes | str | os.PathLike[str]) -> bytes:
     return await _encode_with_ffmpeg(wav, "MP3", [*MP3_CODEC_ARGS, "-f", "mp3"])
 
 
+def _encode_flac_sync(wav: bytes | str | os.PathLike[str]) -> bytes:
+    src: PathOrBuf = io.BytesIO(wav) if isinstance(wav, (bytes, bytearray)) else wav
+    tensor, rate = load_audio(src)
+    buf = io.BytesIO()
+    _safe_soundfile_write(
+        buf,
+        tensor.detach().cpu().numpy().T,
+        int(rate),
+        format="FLAC",
+        subtype="PCM_24",
+    )
+    return buf.getvalue()
+
+
+async def encode_flac(wav: bytes | str | os.PathLike[str]) -> bytes:
+    """Transcode a WAV render or saved WAV to lossless FLAC; never return WAV on error."""
+    import asyncio
+
+    try:
+        return await asyncio.to_thread(_encode_flac_sync, wav)
+    except Exception:  # noqa: BLE001
+        return await _encode_with_ffmpeg(wav, "FLAC", ["-c:a", "flac", "-f", "flac"])
+
+
+def _encode_wav_production_sync(
+    wav: bytes | str | os.PathLike[str],
+    target_rate: int = 48000,
+) -> bytes:
+    src: PathOrBuf = io.BytesIO(wav) if isinstance(wav, (bytes, bytearray)) else wav
+    tensor, rate = load_audio(src)
+    tensor = tensor.detach().float().cpu()
+    if tensor.ndim == 1:
+        tensor = tensor.unsqueeze(0)
+    rate_int = int(rate)
+    target_int = int(target_rate) if int(target_rate) > 0 else rate_int
+    if rate_int != target_int and tensor.shape[-1] > 1:
+        resampled = None
+        if torchaudio is not None and hasattr(torchaudio, "functional"):
+            try:
+                resampled = torchaudio.functional.resample(tensor, rate_int, target_int)
+            except Exception:  # noqa: BLE001
+                resampled = None
+        if resampled is None:
+            arr = tensor.numpy()
+            old_len = arr.shape[-1]
+            new_len = max(1, int(round(old_len * target_int / rate_int)))
+            x_old = np.linspace(0.0, 1.0, old_len, dtype=np.float64)
+            x_new = np.linspace(0.0, 1.0, new_len, dtype=np.float64)
+            chans = [np.interp(x_new, x_old, ch).astype(np.float32) for ch in arr]
+            samples = np.stack(chans, axis=0).T
+        else:
+            samples = resampled.detach().cpu().numpy().T
+    else:
+        samples = tensor.numpy().T
+    buf = io.BytesIO()
+    _safe_soundfile_write(
+        buf,
+        samples,
+        target_int,
+        format="WAV",
+        subtype="PCM_24",
+    )
+    return buf.getvalue()
+
+
+async def encode_wav_production(
+    wav: bytes | str | os.PathLike[str],
+    target_rate: int = 48000,
+) -> bytes:
+    """Transcode a WAV render or saved WAV to 24-bit PCM WAV at ``target_rate`` (default 48 kHz)."""
+    import asyncio
+
+    return await asyncio.to_thread(_encode_wav_production_sync, wav, target_rate)
+
+
 async def _encode_with_ffmpeg(
     wav: bytes | str | os.PathLike[str], label: str, output_args: list[str],
 ) -> bytes:

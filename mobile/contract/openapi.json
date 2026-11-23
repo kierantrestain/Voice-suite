@@ -1143,6 +1143,46 @@
     "title": "Body_enqueue_batch_job_batch_enqueue_post",
     "type": "object"
    },
+   "Body_finish_workflow_audio_tools_finish_audio_post": {
+    "properties": {
+     "audio": {
+      "contentMediaType": "application/octet-stream",
+      "title": "Audio",
+      "type": "string"
+     },
+     "denoise_highpass_hz": {
+      "default": 80.0,
+      "maximum": 1000.0,
+      "minimum": 0.0,
+      "title": "Denoise Highpass Hz",
+      "type": "number"
+     },
+     "silence_threshold_db": {
+      "default": -42.0,
+      "maximum": -10.0,
+      "minimum": -80.0,
+      "title": "Silence Threshold Db",
+      "type": "number"
+     },
+     "target_dbfs": {
+      "default": -2.0,
+      "maximum": -0.1,
+      "minimum": -40.0,
+      "title": "Target Dbfs",
+      "type": "number"
+     },
+     "trim_silence": {
+      "default": true,
+      "title": "Trim Silence",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "audio"
+    ],
+    "title": "Body_finish_workflow_audio_tools_finish_audio_post",
+    "type": "object"
+   },
    "Body_generate_speech_generate_post": {
     "properties": {
      "class_temperature": {
@@ -1762,6 +1802,44 @@
      "audio"
     ],
     "title": "Body_transcribe_audio_transcribe_post",
+    "type": "object"
+   },
+   "Body_trim_workflow_audio_tools_trim_audio_post": {
+    "properties": {
+     "audio": {
+      "contentMediaType": "application/octet-stream",
+      "title": "Audio",
+      "type": "string"
+     },
+     "end_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Seconds"
+     },
+     "fade_ms": {
+      "default": 15.0,
+      "maximum": 2000.0,
+      "minimum": 0.0,
+      "title": "Fade Ms",
+      "type": "number"
+     },
+     "start_seconds": {
+      "default": 0.0,
+      "minimum": 0.0,
+      "title": "Start Seconds",
+      "type": "number"
+     }
+    },
+    "required": [
+     "audio"
+    ],
+    "title": "Body_trim_workflow_audio_tools_trim_audio_post",
     "type": "object"
    },
    "Body_update_profile_image_profiles__profile_id__image_put": {
@@ -6533,7 +6611,7 @@
   }
  },
  "info": {
-  "title": "VoiceStudio API",
+  "title": "Voice Suite API",
   "version": "0.0.0"
  },
  "openapi": "3.1.0",
@@ -9724,6 +9802,47 @@
     "summary": "Use Archetype"
    }
   },
+  "/audio/{audio_id}.flac": {
+   "get": {
+    "description": "Serve the same render as /audio/<id>.wav, encoded as lossless FLAC for export.",
+    "operationId": "generated_flac_audio__audio_id__flac_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "audio_id",
+      "required": true,
+      "schema": {
+       "title": "Audio Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "audio/flac": {
+        "schema": {
+         "format": "binary",
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Generated Flac"
+   }
+  },
   "/audio/{audio_id}.mp3": {
    "get": {
     "description": "Serve the same render as /audio/<id>.wav, encoded as MP3 for export.\n\nUnlike Ogg/Opus this is a one-shot download, so it is not cached.",
@@ -9883,6 +10002,47 @@
      }
     },
     "summary": "Generated Audio Quality"
+   }
+  },
+  "/audio/{audio_id}_24bit.wav": {
+   "get": {
+    "description": "Serve the same render as /audio/<id>.wav, encoded as 24-bit / 48 kHz production WAV.",
+    "operationId": "generated_wav24_audio__audio_id__24bit_wav_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "audio_id",
+      "required": true,
+      "schema": {
+       "title": "Audio Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "audio/wav": {
+        "schema": {
+         "format": "binary",
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Generated Wav24"
    }
   },
   "/audiobook": {
@@ -20000,6 +20160,43 @@
     "summary": "List Effects"
    }
   },
+  "/tools/finish-audio": {
+   "post": {
+    "description": "Apply production finishing (high-pass rumble removal, silence trim, peak normalization).",
+    "operationId": "finish_workflow_audio_tools_finish_audio_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_finish_workflow_audio_tools_finish_audio_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Finish Workflow Audio"
+   }
+  },
   "/tools/incremental": {
    "post": {
     "operationId": "plan_incremental_tools_incremental_post",
@@ -20160,6 +20357,43 @@
      }
     },
     "summary": "Rate Fit"
+   }
+  },
+  "/tools/trim-audio": {
+   "post": {
+    "description": "Trim synthetic/workflow WAV audio to [start_seconds, end_seconds] with optional edge fade.",
+    "operationId": "trim_workflow_audio_tools_trim_audio_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_trim_workflow_audio_tools_trim_audio_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Trim Workflow Audio"
    }
   },
   "/tools/video-context/{job_id}": {

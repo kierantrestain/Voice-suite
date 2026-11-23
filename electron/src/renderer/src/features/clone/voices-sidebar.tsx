@@ -57,6 +57,31 @@ import {
 
 // ── Saved voices ────────────────────────────────────────────────────────────
 
+const FAVORITE_PROFILES_KEY = 'voicesuite.favoriteProfiles';
+
+function readFavoriteProfiles(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = window.localStorage.getItem(FAVORITE_PROFILES_KEY);
+    if (!raw) return new Set();
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? new Set(parsed.filter((item): item is string => typeof item === 'string'))
+      : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeFavoriteProfiles(ids: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(FAVORITE_PROFILES_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Ignore storage errors when localStorage is unavailable.
+  }
+}
+
 export function SavedVoices({
   onSelected,
   library = false,
@@ -78,24 +103,37 @@ export function SavedVoices({
   const activeId = selectedVoiceId(pathname, selectedProfileId, selectedDesignId);
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null);
   const [query, setQuery] = useState('');
-  const [kind, setKind] = useState<'all' | Profile['kind']>('all');
+  const [kind, setKind] = useState<'all' | 'starred' | Profile['kind']>('all');
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => readFavoriteProfiles());
+
+  const toggleFavorite = (profileId: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(profileId)) next.delete(profileId);
+      else next.add(profileId);
+      writeFavoriteProfiles(next);
+      return next;
+    });
+  };
 
   const allItems = profiles.data ?? [];
   const items = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return allItems.filter(
       (profile) =>
-        (kind === 'all' || profile.kind === kind) &&
+        (kind === 'all' ||
+          (kind === 'starred' ? favoriteIds.has(profile.id) : profile.kind === kind)) &&
         (!normalized ||
           `${profile.name} ${profile.instruct ?? ''} ${profile.ref_text ?? ''}`
             .toLocaleLowerCase()
             .includes(normalized)),
     );
-  }, [allItems, kind, query]);
-  const showLibraryTools = library || allItems.length > 4;
+  }, [allItems, favoriteIds, kind, query]);
+  const showLibraryTools = library || allItems.length > 4 || favoriteIds.size > 0;
   const hasBothKinds =
     allItems.some((profile) => profile.kind === 'clone') &&
     allItems.some((profile) => profile.kind === 'design');
+  const showKindFilters = hasBothKinds || favoriteIds.size > 0 || library;
   const presentation = profileListPresentation(items.length, library);
   const virtualizer = useVirtualizer({
     count: presentation === 'virtual' ? items.length : 0,
@@ -215,17 +253,25 @@ export function SavedVoices({
               className="h-8 bg-sidebar-accent/25 pl-8"
             />
           </div>
-          {hasBothKinds ? (
+          {showKindFilters ? (
             <ToggleGroup
               value={[kind]}
               onValueChange={(value) => {
                 const next = value[0];
-                if (next === 'all' || next === 'clone' || next === 'design') setKind(next);
+                if (next === 'all' || next === 'starred' || next === 'clone' || next === 'design')
+                  setKind(next);
               }}
               size="sm"
               aria-label={t('clone.saved_profiles')}
             >
               <ToggleGroupItem value="all">{t('clone.history_all')}</ToggleGroupItem>
+              <ToggleGroupItem
+                value="starred"
+                aria-label={t('clone.history_starred')}
+                title={t('clone.history_starred')}
+              >
+                <StarIcon />
+              </ToggleGroupItem>
               <ToggleGroupItem value="clone" aria-label={t('clone.title')} title={t('clone.title')}>
                 <FingerprintIcon />
               </ToggleGroupItem>
@@ -266,6 +312,7 @@ export function SavedVoices({
           ).map(({ profile, row }) => {
             const design = profile.kind === 'design';
             const active = profile.id === activeId;
+            const isFavorite = favoriteIds.has(profile.id);
             return (
               <li
                 key={profile.id}
@@ -294,6 +341,12 @@ export function SavedVoices({
                 <div className="pointer-events-none min-w-0 flex-1">
                   <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
                     <span className="truncate">{profile.name}</span>
+                    {isFavorite && (
+                      <StarIcon
+                        className="size-3 shrink-0 fill-current text-warning"
+                        aria-hidden="true"
+                      />
+                    )}
                     <span
                       className="shrink-0 text-muted-foreground"
                       title={t(design ? 'projects.designed_voice' : 'projects.cloned_voice')}
@@ -321,6 +374,17 @@ export function SavedVoices({
                       disabledLabel={t('engines.none_ready_title')}
                     />
                   ) : null}
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-pressed={isFavorite}
+                    aria-label={isFavorite ? t('clone.history_unstar') : t('clone.history_star')}
+                    title={isFavorite ? t('clone.history_unstar') : t('clone.history_star')}
+                    className={cn(isFavorite && 'text-warning hover:text-warning')}
+                    onClick={() => toggleFavorite(profile.id)}
+                  >
+                    <StarIcon className={cn(isFavorite && 'fill-current')} />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-xs"
