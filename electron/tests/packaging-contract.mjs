@@ -117,9 +117,10 @@ const storeLabel = {
   'microsoft-store': 'MicrosoftStore-',
   'mac-app-store': 'MacAppStore-',
 }[DISTRIBUTION_TARGET];
+const artifactSlug = PRODUCT_NAME.replace(/[^A-Za-z0-9]+/g, '-');
 assert.equal(
   config.artifactName,
-  `${PRODUCT_NAME}-${storeLabel ?? ''}\${version}-\${os}-\${arch}.\${ext}`,
+  `${artifactSlug}-${storeLabel ?? ''}\${version}-\${os}-\${arch}.\${ext}`,
   'Direct downloads are VoiceStudio-<version>-<os>-<arch>; store packages stay labelled',
 );
 assert.equal(
