@@ -415,6 +415,8 @@ def system_info():
             os.environ.get("TRANSLATE_PROVIDER")
             or _prefs_mod.get("translation_backend", "argos")
         )
+        from core.device_caps import apple_silicon_mps_status as _mps_status_fn
+        _mps_info = _mps_status_fn(torch)
         return {
             "app_version": APP_VERSION,
             "build_commit": build_commit(),
@@ -440,6 +442,8 @@ def system_info():
             "has_hf_token": _has_hf_token(),
             "fast_download": _fast_download_status(),
             "device": get_best_device(),
+            "mps_status": _mps_info,
+            "acceleration_explanation": _mps_info.get("acceleration_explanation", ""),
             "python": sys.version.split()[0],
             "platform": sys.platform,
             "arch": platform.machine(),
@@ -463,6 +467,8 @@ def system_info():
         }
     except Exception as e:
         logger.exception("system_info failed — returning safe defaults")
+        from core.device_caps import apple_silicon_mps_status as _mps_status_fn
+        _mps_info = _mps_status_fn(torch)
         return {
             "app_version": APP_VERSION,
             "build_commit": build_commit(),
@@ -480,6 +486,8 @@ def system_info():
             "translate_provider": "unknown",
             "has_hf_token": False,
             "device": "cpu",
+            "mps_status": _mps_info,
+            "acceleration_explanation": _mps_info.get("acceleration_explanation", ""),
             "python": sys.version.split()[0],
             "platform": sys.platform,
             "arch": platform.machine(),
@@ -915,6 +923,8 @@ def get_sys_info():
 
     vm = psutil.virtual_memory()
     cpu_frequency = psutil.cpu_freq()
+    from core.device_caps import apple_silicon_mps_status as _mps_status_fn
+    _mps_info = _mps_status_fn(torch)
     return {
         "cpu": psutil.cpu_percent(interval=None),
         "cpu_model": _CPU_MODEL,
@@ -927,7 +937,9 @@ def get_sys_info():
         "gpu_utilization": gpu_utilization,
         "vram": round(vram, 2),
         "total_vram": round(total_vram, 2),
-        "gpu_active": gpu_active
+        "gpu_active": gpu_active,
+        "mps_status": _mps_info,
+        "acceleration_explanation": _mps_info.get("acceleration_explanation", ""),
     }
 
 @router.post("/system/flush-memory")
@@ -938,6 +950,7 @@ async def flush_memory(unload_model: bool = False):
     re-loaded lazily on the next generation request.
     """
     import gc
+    from core.device_caps import release_mps_cache
     from services.model_manager import free_vram
 
     freed_model = False
@@ -961,6 +974,7 @@ async def flush_memory(unload_model: bool = False):
     gc.collect(generation=0)
 
     free_vram()
+    mps_released = release_mps_cache(torch)
 
     # Snapshot after flush. Two numbers, because one of them is a lie by
     # omission: `memory_allocated` counts live tensors only, so it reads ~0
@@ -990,6 +1004,7 @@ async def flush_memory(unload_model: bool = False):
     return {
         "flushed": True,
         "unloaded_model": freed_model,
+        "mps_cache_released": mps_released,
         "ram_after": round(ram_after, 2),
         "vram_after": round(vram_after, 2),
         "vram_reserved": round(vram_reserved, 2),

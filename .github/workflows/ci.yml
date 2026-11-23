@@ -959,8 +959,8 @@ jobs:
       - name: macOS bundle signature is valid
         if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS'
         run: |
-          APP=$(find electron/release -maxdepth 2 -name VoiceStudio.app -type d -print -quit)
-          test -n "$APP" || { echo "No VoiceStudio.app to verify"; exit 1; }
+          APP=$(find electron/release -maxdepth 2 \( -name "Voice Suite.app" -o -name "VoiceStudio.app" -o -name "*.app" \) -type d -print -quit)
+          test -n "$APP" || { echo "No Voice Suite.app / VoiceStudio.app to verify"; exit 1; }
           codesign --verify --deep --strict "$APP"
 
       - name: Bundled native code must run on the Snap base (glibc <= 2.35)
@@ -978,6 +978,25 @@ jobs:
           else
             node tests/packaged-smoke.mjs --setup
           fi
+
+      - name: Build macOS .dmg and .zip installers
+        if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS'
+        working-directory: electron
+        run: |
+          bun x electron-builder --config electron-builder.config.mjs --mac --arm64 --publish never
+
+      - name: Upload macOS .dmg and .zip installer artifacts
+        if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: voice-suite-macos-arm64
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            electron/release/*.dmg
+            electron/release/*.zip
+            electron/release/Voice-Suite-*
+            electron/release/VoiceStudio-*
 
       # The bundled CLI's own contract (desktop launch switches, HTTP, symlinks).
       - name: Standalone CLI bundle
