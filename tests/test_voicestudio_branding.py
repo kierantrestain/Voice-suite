@@ -37,7 +37,8 @@ def test_current_version_is_in_lockstep_everywhere() -> None:
 def test_visible_brand_surfaces_say_voicestudio() -> None:
     visible_files = ("electron/build/Info.plist", "electron/src/renderer/index.html")
     product_name = json.loads((ROOT / "config/app.json").read_text(encoding="utf-8"))["productName"]
-    assert product_name == "VoiceStudio"
+    assert product_name in ("Voice Suite", "VoiceStudio")
+    assert product_name == "Voice Suite"
     for path in visible_files:
         text = (ROOT / path).read_text(encoding="utf-8")
         assert "__APP_PRODUCT_NAME__" in text, path
@@ -46,7 +47,10 @@ def test_visible_brand_surfaces_say_voicestudio() -> None:
         assert "OmniVoice Gallery" not in text, path
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "**VoiceStudio** (default, powered by k2-fsa/OmniVoice)" in readme
+    assert (
+        "**Voice Suite** (default, powered by k2-fsa/OmniVoice)" in readme
+        or "**VoiceStudio** (default, powered by k2-fsa/OmniVoice)" in readme
+    )
     assert "**OmniVoice** (default)" not in readme
 
 
