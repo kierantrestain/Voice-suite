@@ -97,7 +97,7 @@ try {
           (el) => el.scrollHeight <= el.clientHeight || getComputedStyle(el).overflowY === 'auto',
         ),
     );
-    const footer = await sidebar.locator('footer').getByRole('link', { name: 'Settings', exact: true }).boundingBox();
+    const footer = await sidebar.getByRole('link', { name: 'Settings', exact: true }).last().boundingBox();
     assert.ok(
       footer && footer.y + footer.height <= height,
       `Settings footer escaped ${width}x${height}: ${JSON.stringify(footer)}`,

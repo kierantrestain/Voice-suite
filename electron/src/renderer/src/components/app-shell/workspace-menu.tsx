@@ -111,6 +111,8 @@ function NavigationLink({
   const link = (
     <Link
       to={to}
+      search={label === 'nav.dictation' ? ({ view: 'dictation' } as never) : undefined}
+      activeOptions={label === 'nav.dictation' ? { exact: true, includeSearch: true } : undefined}
       aria-label={compact ? t(label) : undefined}
       onClick={() => {
         activate?.();
@@ -126,15 +128,11 @@ function NavigationLink({
               ? 'gap-2 px-2'
               : 'gap-2.5 px-2.5',
       )}
-      activeProps={
-        label === 'nav.dictation'
-          ? { 'aria-current': 'false' }
-          : {
-              className:
-                'bg-sidebar-accent/80 text-sidebar-foreground shadow-sm ring-1 ring-inset ring-sidebar-border/60',
-              'aria-current': 'page',
-            }
-      }
+      activeProps={{
+        className:
+          'bg-sidebar-accent/80 text-sidebar-foreground shadow-sm ring-1 ring-inset ring-sidebar-border/60',
+        'aria-current': 'page',
+      }}
     >
       <Icon
         className={iconClass}

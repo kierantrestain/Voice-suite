@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 const route = vi.hoisted(() => ({ pathname: '/gallery' }));
 vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: any) => select({ location: route }),
-  Link: ({ to, activeProps: _activeProps, children, ...props }: any) => (
+  Link: ({ to, activeProps: _activeProps, activeOptions: _activeOptions, search: _search, children, ...props }: any) => (
     <a href={to} {...props}>
       {children}
     </a>
