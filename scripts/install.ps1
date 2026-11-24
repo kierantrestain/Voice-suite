@@ -27,13 +27,13 @@ if ($Uninstall) { $mode = 'uninstall' }
 if ($mode -eq 'uninstall') {
     if ($Main -or $Source -or $vsVersion) { throw 'Uninstall cannot be combined with installation options; clear VOICESTUDIO_VERSION first.' }
     $keys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
-    $entries = @(Get-ItemProperty $keys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^VoiceStudio(?: \d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)?$' })
+    $entries = @(Get-ItemProperty $keys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^(?:Voice Suite|VoiceStudio)(?: \d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)?$' })
     foreach ($entry in $entries) {
         $command = [string]$entry.UninstallString
         if ($command -notmatch '^"([^"]+\.exe)"(?:\s+(/currentuser|/allusers))?\s*$') { continue }
         $exe = $Matches[1]
         $scope = $Matches[2]
-        if ((Split-Path $exe -Leaf) -ne 'Uninstall VoiceStudio.exe' -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
+        if ((Split-Path $exe -Leaf) -notin @('Uninstall Voice Suite.exe', 'Uninstall VoiceStudio.exe') -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
         $launch = @{ FilePath = $exe; Wait = $true; PassThru = $true }
         $arguments = @()
         if ($scope) { $arguments += $scope }

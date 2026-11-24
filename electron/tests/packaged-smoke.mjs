@@ -22,17 +22,26 @@ const defaultExecutableCandidates =
   process.platform === 'win32'
     ? targetArch === 'arm64'
       ? [
+          'electron/release/win-arm64-unpacked/Voice Suite.exe',
+          'electron/release/win-unpacked/Voice Suite.exe',
           'electron/release/win-arm64-unpacked/VoiceStudio.exe',
           'electron/release/win-unpacked/VoiceStudio.exe',
         ]
-      : ['electron/release/win-unpacked/VoiceStudio.exe']
+      : [
+          'electron/release/win-unpacked/Voice Suite.exe',
+          'electron/release/win-unpacked/VoiceStudio.exe',
+        ]
     : process.platform === 'darwin'
       ? targetArch === 'arm64'
         ? [
+            'electron/release/mac-arm64/Voice Suite.app/Contents/MacOS/Voice Suite',
+            'electron/release/mac/Voice Suite.app/Contents/MacOS/Voice Suite',
             'electron/release/mac-arm64/VoiceStudio.app/Contents/MacOS/VoiceStudio',
             'electron/release/mac/VoiceStudio.app/Contents/MacOS/VoiceStudio',
           ]
         : [
+            'electron/release/mac/Voice Suite.app/Contents/MacOS/Voice Suite',
+            'electron/release/mac-x64/Voice Suite.app/Contents/MacOS/Voice Suite',
             'electron/release/mac/VoiceStudio.app/Contents/MacOS/VoiceStudio',
             'electron/release/mac-x64/VoiceStudio.app/Contents/MacOS/VoiceStudio',
           ]

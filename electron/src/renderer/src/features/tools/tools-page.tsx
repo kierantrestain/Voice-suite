@@ -295,10 +295,10 @@ function AudioFinishingTool() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h2 className="text-lg font-medium">Audio Finishing &amp; Waveform Editor</h2>
+        <h2 className="text-lg font-medium tracking-[-0.015em]">Audio finishing and waveform editor</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Inspect waveforms, trim start/end points with smooth edge fades, remove low-end rumble and
-          edge silence, normalize loudness, and A/B compare original vs. finished audio.
+          Inspect waveforms, trim start and end points with smooth edge fades, remove low-end rumble and
+          edge silence, normalize loudness, and A/B compare original against finished audio.
         </p>
       </div>
 
@@ -325,19 +325,20 @@ function AudioFinishingTool() {
         </Button>
         {latestOutput.result?.blob && (
           <Button type="button" variant="ghost" disabled={busy} onClick={loadLatestTake}>
-            Load Latest Take
+            Load latest take
           </Button>
         )}
       </div>
 
       {sourceUrl && (
-        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/15 p-4">
+        <div className="space-y-4 rounded-xl border border-border/70 bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1">
               <Button
                 type="button"
                 size="sm"
                 variant={abMode === 'A' ? 'secondary' : 'ghost'}
+                className="rounded-md"
                 aria-pressed={abMode === 'A'}
                 onClick={() => setAbMode('A')}
               >
@@ -347,6 +348,7 @@ function AudioFinishingTool() {
                 type="button"
                 size="sm"
                 variant={abMode === 'B' ? 'secondary' : 'ghost'}
+                className="rounded-md"
                 aria-pressed={abMode === 'B'}
                 disabled={!finishedUrl}
                 onClick={() => setAbMode('B')}
@@ -362,29 +364,31 @@ function AudioFinishingTool() {
             key={abMode === 'B' && finishedUrl ? finishedUrl : sourceUrl}
             src={abMode === 'B' && finishedUrl ? finishedUrl : sourceUrl}
             source="tools-finishing"
-            height={52}
+            height={56}
           />
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/50 p-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-card/50 p-4 sm:grid-cols-3">
         <label className="block space-y-1.5 text-sm">
-          <span>Trim Start (s)</span>
+          <span className="text-muted-foreground">Trim start (s)</span>
           <Input
             type="number"
             min="0"
             step="0.05"
+            className="font-mono tabular-nums"
             value={startSeconds}
             disabled={busy}
             onChange={(e) => setStartSeconds(e.target.value)}
           />
         </label>
         <label className="block space-y-1.5 text-sm">
-          <span>Trim End (s, optional)</span>
+          <span className="text-muted-foreground">Trim end (s, optional)</span>
           <Input
             type="number"
             min="0"
             step="0.05"
+            className="font-mono tabular-nums"
             placeholder="End of clip"
             value={endSeconds}
             disabled={busy}
@@ -392,12 +396,13 @@ function AudioFinishingTool() {
           />
         </label>
         <label className="block space-y-1.5 text-sm">
-          <span>Edge Fade (ms)</span>
+          <span className="text-muted-foreground">Edge fade (ms)</span>
           <Input
             type="number"
             min="0"
             max="1000"
             step="5"
+            className="font-mono tabular-nums"
             value={fadeMs}
             disabled={busy}
             onChange={(e) => setFadeMs(e.target.value)}
@@ -405,10 +410,10 @@ function AudioFinishingTool() {
         </label>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border/50 p-4">
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card/50 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Trim Leading &amp; Trailing Silence</p>
+            <p className="text-sm font-medium">Trim leading and trailing silence</p>
             <p className="text-xs text-muted-foreground">
               Retains 50 ms natural speech padding around voiced audio
             </p>
@@ -421,36 +426,39 @@ function AudioFinishingTool() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="block space-y-1.5 text-sm">
-            <span>Target Peak (dBFS)</span>
+            <span className="text-muted-foreground">Target peak (dBFS)</span>
             <Input
               type="number"
               min="-24"
               max="-0.5"
               step="0.5"
+              className="font-mono tabular-nums"
               value={targetDbfs}
               disabled={busy}
               onChange={(e) => setTargetDbfs(e.target.value)}
             />
           </label>
           <label className="block space-y-1.5 text-sm">
-            <span>Silence Floor (dBFS)</span>
+            <span className="text-muted-foreground">Silence floor (dBFS)</span>
             <Input
               type="number"
               min="-70"
               max="-15"
               step="1"
+              className="font-mono tabular-nums"
               value={silenceThresholdDb}
               disabled={busy || !trimSilence}
               onChange={(e) => setSilenceThresholdDb(e.target.value)}
             />
           </label>
           <label className="block space-y-1.5 text-sm">
-            <span>High-Pass Filter (Hz)</span>
+            <span className="text-muted-foreground">High-pass filter (Hz)</span>
             <Input
               type="number"
               min="0"
               max="400"
               step="10"
+              className="font-mono tabular-nums"
               value={highpassHz}
               disabled={busy}
               onChange={(e) => setHighpassHz(e.target.value)}
@@ -465,7 +473,7 @@ function AudioFinishingTool() {
           disabled={!file || busy}
           onClick={() => void runProcess('finish')}
         >
-          {busy ? t('common.loading') : 'Apply Audio Finishing'}
+          {busy ? t('common.loading') : 'Apply audio finishing'}
         </Button>
         <Button
           type="button"

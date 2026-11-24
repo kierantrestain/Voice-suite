@@ -324,8 +324,10 @@ if [ "$OS" = mac ]; then
     MOUNT="$WORK/mount"
     mkdir "$MOUNT"
     hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "$PACKAGE" >/dev/null || die "Could not open the disk image $ASSET (checksum was verified). Free some disk space and retry."
-    [ -d "$MOUNT/VoiceStudio.app" ] || die 'VoiceStudio.app is missing from the disk image.'
-    install_app "$MOUNT/VoiceStudio.app"
+    APP_BUNDLE="$MOUNT/VoiceStudio.app"
+    [ -d "$APP_BUNDLE" ] || APP_BUNDLE="$MOUNT/Voice Suite.app"
+    [ -d "$APP_BUNDLE" ] || die 'VoiceStudio.app is missing from the disk image.'
+    install_app "$APP_BUNDLE"
 else
     install_app "$PACKAGE"
 fi

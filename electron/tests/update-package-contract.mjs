@@ -102,7 +102,7 @@ const hashes = await fileHashes(artifactPath, platform === 'linux');
 assert.equal(hashes.sha512, fileSha, 'Update metadata SHA-512 matches artifact bytes');
 
 const osToken = platform === 'win32' ? 'win' : platform === 'darwin' ? 'mac' : 'linux';
-const productName = JSON.parse(readFileSync(resolve(root, '../config/app.json'), 'utf8')).productName;
+const productName = JSON.parse(readFileSync(resolve(electronRoot, '../config/app.json'), 'utf8')).productName;
 const artifactPrefix = productName.replace(/[^A-Za-z0-9]+/g, '-');
 const artifactBrand =
   process.env.VOICESTUDIO_DISTRIBUTION === 'microsoft-store'

@@ -182,17 +182,20 @@ export function ModelRightsIndicator({
         data-testid="model-rights-indicator"
       >
         <span
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium',
-            rights.isNonCommercial
-              ? 'border-destructive/40 bg-destructive/10 text-destructive'
-              : rights.isCommercialPermitted
-                ? 'border-success/40 bg-success/10 text-success'
-                : 'border-warning/40 bg-warning/10 text-warning',
-          )}
+          className="inline-flex items-center gap-2 rounded-md border border-border/80 bg-card/80 px-2.5 py-1 text-xs font-medium text-foreground/90"
           title={`App License: AGPL-3.0 (Commercial application use permitted) | Model Weights (${target}): ${rights.headline}`}
         >
-          <ModelLicenseIcon category={rights.category} className="size-3.5 shrink-0" />
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-1.5 shrink-0 rounded-full',
+              rights.isNonCommercial
+                ? 'bg-destructive'
+                : rights.isCommercialPermitted
+                  ? 'bg-success'
+                  : 'bg-warning',
+            )}
+          />
           <span className="max-w-52 truncate">{rights.shortBadge}</span>
           <span className="sr-only">({shortLocalized})</span>
         </span>

@@ -76,24 +76,15 @@ interface ExportRecord {
 }
 
 const iconTones: Record<string, string> = {
-  '/clone':
-    'bg-sky-100 text-sky-700 ring-sky-300/60 dark:bg-sky-400/15 dark:text-sky-300 dark:ring-sky-300/30',
-  '/design':
-    'bg-amber-100 text-amber-800 ring-amber-300/60 dark:bg-amber-400/15 dark:text-amber-300 dark:ring-amber-300/30',
-  '/dub':
-    'bg-teal-100 text-teal-700 ring-teal-300/60 dark:bg-teal-400/15 dark:text-teal-300 dark:ring-teal-300/30',
-  '/personas':
-    'bg-emerald-100 text-emerald-700 ring-emerald-300/60 dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-emerald-300/30',
-  '/stories':
-    'bg-cyan-100 text-cyan-700 ring-cyan-300/60 dark:bg-cyan-400/15 dark:text-cyan-300 dark:ring-cyan-300/30',
-  '/audiobook':
-    'bg-amber-100 text-amber-800 ring-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200 dark:ring-amber-300/30',
-  '/transcriptions':
-    'bg-teal-100 text-teal-700 ring-teal-300/60 dark:bg-teal-400/15 dark:text-teal-200 dark:ring-teal-300/30',
-  '/batch':
-    'bg-sky-100 text-sky-700 ring-sky-300/60 dark:bg-sky-400/15 dark:text-sky-200 dark:ring-sky-300/30',
-  '/settings':
-    'bg-slate-100 text-slate-700 ring-slate-300/60 dark:bg-slate-300/15 dark:text-slate-200 dark:ring-slate-300/30',
+  '/clone': 'bg-primary/12 text-primary ring-primary/25',
+  '/design': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/dub': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/personas': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/stories': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/audiobook': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/transcriptions': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/batch': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/settings': 'bg-accent/70 text-foreground/85 ring-border/70',
 };
 
 type LongformRecent = Extract<HomeRecentProject, { kind: 'longform' }>;
@@ -344,7 +335,7 @@ export function HomePage() {
                     className={`home-destination group ${groupIndex === 0 ? 'home-destination--primary' : 'home-destination--secondary'}`}
                   >
                     <div
-                      className={`home-destination-icon flex size-10 items-center justify-center rounded-xl ring-1 ring-inset shadow-[inset_0_1px_0_rgb(255_255_255/10%)] ${iconTones[to]}`}
+                      className={`home-destination-icon flex size-10 items-center justify-center rounded-xl ring-1 ring-inset ${iconTones[to]}`}
                     >
                       <HomeFeatureIcon destination={to} />
                     </div>
@@ -402,9 +393,9 @@ export function HomePage() {
                   <Link
                     key={record.id}
                     to="/projects"
-                    className="group flex min-w-0 items-center gap-3 rounded-xl border border-border/50 bg-card/20 px-3 py-2.5 outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+                    className="group flex min-w-0 items-center gap-3 rounded-xl border border-border/60 bg-card/40 px-3 py-2.5 outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <FolderOpenIcon className="size-4 shrink-0 text-primary" />
+                    <FolderOpenIcon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
                         {record.filename ||
@@ -442,7 +433,7 @@ export function HomePage() {
                   {profiles.slice(0, 4).map((profile) => (
                     <div
                       key={profile.id}
-                      className="flex min-w-0 items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-accent/50"
+                      className="flex min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50"
                     >
                       <ProfileAvatar name={profile.name} imageUrl={profile.image_url} />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
