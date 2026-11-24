@@ -1,0 +1,74 @@
+# ──────────────────────────────────────────────────────────────
+#  Voice Suite — inference backend for the hosted (Vercel) frontend
+#
+#  The Vercel site is static. All AI work (TTS, cloning, dubbing, ASR)
+#  runs here, on hardware you control. Built from this repository.
+#
+#  1. cp deploy/inference-backend/.env.example deploy/inference-backend/.env
+#     and fill in OMNIVOICE_API_KEY and OMNIVOICE_ALLOWED_ORIGINS.
+#  2. CPU or NVIDIA host:
+#       docker compose -f deploy/inference-backend/docker-compose.yml up -d --build
+#     NVIDIA GPU (needs nvidia-container-toolkit):
+#       docker compose -f deploy/inference-backend/docker-compose.yml \
+#         -f deploy/inference-backend/docker-compose.gpu.yml up -d --build
+#  3. Public HTTPS (required: browsers block http:// backends from an
+#     https:// site, except localhost). Either point a DNS name at this host
+#     and add `--profile https` (Caddy obtains a Let's Encrypt certificate),
+#     or keep the port on loopback and use your own tunnel/reverse proxy.
+#  4. In the Vercel site: Settings → Sharing → Remote backend → enter
+#     https://<your domain> and the API key → Test connection → Save.
+#
+#  See docs/handover/DEPLOYMENT.md for the full guide.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+    image: voice-suite-backend:local
+    container_name: voice-suite-backend
+    ports:
+      # Loopback only. Caddy (profile "https") or your tunnel publishes it.
+      - "127.0.0.1:3900:3900"
+    volumes:
+      - voice-suite-data:/app/omnivoice_data
+    environment:
+      - HF_HOME=/app/omnivoice_data/huggingface
+      - HF_TOKEN=${HF_TOKEN:-}
+      - OMNIVOICE_DATA_DIR=/app/omnivoice_data
+      - PYTHONPATH=/app/backend
+      - PYTHONUNBUFFERED=1
+      - OMNIVOICE_SERVER_MODE=1
+      # Required: every non-loopback request (the Vercel site) must present
+      # this key. The browser exchanges it for a short-lived scoped session.
+      - OMNIVOICE_API_KEY=${OMNIVOICE_API_KEY:?set OMNIVOICE_API_KEY (long random string) in .env}
+      # Required: the exact origin(s) of the hosted frontend, comma-separated,
+      # e.g. https://voice-suite.vercel.app — nothing else may call the API.
+      - OMNIVOICE_ALLOWED_ORIGINS=${OMNIVOICE_ALLOWED_ORIGINS:?set OMNIVOICE_ALLOWED_ORIGINS to the Vercel origin in .env}
+      # Opt-in analytics and failure reports stay off unless a user enables them.
+      - OMNIVOICE_ANALYTICS_DISABLED=${OMNIVOICE_ANALYTICS_DISABLED:-1}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    restart: unless-stopped
+
+  https:
+    image: caddy:2.10-alpine
+    container_name: voice-suite-https
+    profiles: ["https"]
+    depends_on: [backend]
+    network_mode: host
+    environment:
+      - VOICE_SUITE_BACKEND_DOMAIN=${VOICE_SUITE_BACKEND_DOMAIN:?set VOICE_SUITE_BACKEND_DOMAIN for the https profile}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+
+volumes:
+  voice-suite-data:
+  caddy-data:

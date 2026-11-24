@@ -99,14 +99,14 @@ describe('probeHostedBackend', () => {
 
   it('distinguishes a starting backend (503) from a wrong server', async () => {
     const starting = await probeHostedBackend('https://a.example', '', {
-      fetchImpl: (async () =>
-        jsonResponse({ status: 'starting' }, 503)) as unknown as typeof fetch,
+      fetchImpl: (async () => jsonResponse({ status: 'starting' }, 503)) as unknown as typeof fetch,
       pageProtocol: 'https:',
     });
     expect(starting).toMatchObject({ ok: false, kind: 'http', status: 503 });
 
     const html = await probeHostedBackend('https://a.example', '', {
-      fetchImpl: (async () => new Response('<!doctype html>', { status: 200 })) as unknown as typeof fetch,
+      fetchImpl: (async () =>
+        new Response('<!doctype html>', { status: 200 })) as unknown as typeof fetch,
       pageProtocol: 'https:',
     });
     expect(html).toMatchObject({ ok: false, kind: 'wrong_port' });
@@ -148,5 +148,32 @@ describe('probeHostedBackend', () => {
       pageProtocol: 'https:',
     });
     expect(probe).toMatchObject({ ok: false, kind: 'auth', status: 401 });
+  });
+});
+
+const SESSION_TOKEN = `ovs_admin_session_${'a'.repeat(43)}`;
+
+describe('hostedBackendApi.useRemote', () => {
+  it('keeps the session exchanged for a newly saved backend (regression)', async () => {
+    localStorage.clear();
+    const { hostedBackendApi } = await import('./hosted-backend');
+    const { getAdminSession } = await import('@shared/api/authSession');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/health')
+          ? jsonResponse({ status: 'ok', version: '1' })
+          : jsonResponse({ token: SESSION_TOKEN, expires_in: 3600, transport: 'bearer' }, 201),
+      ),
+    );
+    const probe = await hostedBackendApi.useRemote({
+      url: 'https://gpu.example.com',
+      apiKey: 'master-key',
+    });
+    expect(probe.ok).toBe(true);
+    expect(localStorage.getItem(HOSTED_BACKEND_STORAGE_KEY)).toBe('https://gpu.example.com');
+    expect(getAdminSession('https://gpu.example.com')).not.toBeNull();
+    expect(JSON.stringify({ ...localStorage })).not.toContain('master-key');
+    vi.unstubAllGlobals();
   });
 });

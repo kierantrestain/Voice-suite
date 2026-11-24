@@ -180,11 +180,12 @@ export const hostedBackendApi = {
     return probeHostedBackend(input.url, input.apiKey);
   },
   async useRemote(input: { url: string; apiKey: string }) {
+    // A session belongs to one backend: drop the old one before the probe
+    // exchanges the key for a new session, never after (that would discard it).
+    const target = normalizeBackendUrl(input.url);
+    if (target && target !== hostedBackendUrl()) clearAdminSession();
     const probe = await probeHostedBackend(input.url, input.apiKey);
-    if (probe.ok) {
-      if (probe.target !== hostedBackendUrl()) clearAdminSession();
-      saveHostedBackendUrl(probe.target);
-    }
+    if (probe.ok) saveHostedBackendUrl(probe.target);
     return probe;
   },
   async useLocal() {
