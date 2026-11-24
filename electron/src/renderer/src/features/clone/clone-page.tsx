@@ -156,10 +156,10 @@ export function ClonePage() {
           >
             <div className="flex min-w-0 items-center gap-2">
               <SidebarToggle />
-              <h1 className="truncate text-sm font-medium">{t('clone.title')}</h1>
+              <h1 className="shrink-0 truncate text-sm font-medium">{t('clone.title')}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              <ModelRightsIndicator engine={activeTts} compact className="hidden xl:flex" />
+              <ModelRightsIndicator engine={activeTts} compact className="hidden 2xl:flex" />
               <SupportShortcut />
               <Button
                 variant="ghost"
