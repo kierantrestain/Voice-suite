@@ -128,7 +128,7 @@ function NavigationLink({
       )}
       activeProps={
         label === 'nav.dictation'
-          ? undefined
+          ? { 'aria-current': undefined }
           : {
               className:
                 'bg-sidebar-accent/80 text-sidebar-foreground shadow-sm ring-1 ring-inset ring-sidebar-border/60',

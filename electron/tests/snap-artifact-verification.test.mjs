@@ -22,7 +22,7 @@ plugs:
     allow-sandbox: false
 name: voicestudio
 version: 0.5.7
-title: VoiceStudio
+title: ${metadata.listing.title}
 summary: ${metadata.listing.shortDescription}
 description: ${metadata.listing.description}
 apps:

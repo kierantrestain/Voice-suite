@@ -296,6 +296,16 @@ case "$OS" in
     linux) ASSET="$ASSET_PREFIX-$VS_VERSION-linux-x64.AppImage" ;;
 esac
 PACKAGE="$PACKAGE_DIR/$ASSET"
+if [ "$MODE" = main ] && [ ! -f "$PACKAGE" ]; then
+    case "$OS" in
+        mac) BRANDED_ASSET="Voice-Suite-$VS_VERSION-mac-$ARCH.dmg" ;;
+        linux) BRANDED_ASSET="Voice-Suite-$VS_VERSION-linux-x64.AppImage" ;;
+    esac
+    if [ -f "$PACKAGE_DIR/$BRANDED_ASSET" ]; then
+        ASSET="$BRANDED_ASSET"
+        PACKAGE="$PACKAGE_DIR/$ASSET"
+    fi
+fi
 if [ "$MODE" = binary ]; then
     BASE="$RELEASES/download/v$VS_VERSION"
     printf 'Downloading %s\n' "$ASSET"

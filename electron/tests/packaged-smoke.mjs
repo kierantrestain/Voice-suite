@@ -197,14 +197,14 @@ try {
     verifyManagedShutdown = true;
     console.log('PASS: packaged backend reached deferred startup before deliberate quit');
   } else if (setup) {
-    await window.getByText('VoiceStudio', { exact: true }).first().waitFor();
+    await window.getByText('Voice Suite', { exact: true }).first().waitFor();
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setSize(960, 640);
     });
     const setupLayout = await window.evaluate(() => {
       const header = document.querySelector('header.workspace-titlebar');
       const scroller = document.querySelector('[data-testid="backend-gate-scroll"]');
-      const brand = header?.textContent?.includes('VoiceStudio') ? header : null;
+      const brand = header?.textContent?.includes('Voice Suite') ? header : null;
       const headerRect = header?.getBoundingClientRect();
       const scrollRect = scroller?.getBoundingClientRect();
       return {

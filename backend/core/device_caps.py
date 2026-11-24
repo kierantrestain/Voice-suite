@@ -1198,7 +1198,9 @@ def apple_silicon_mps_status(torch_mod=None) -> dict:
         unified_memory_bytes = int(psutil.virtual_memory().total)
         unified_memory_gb = round(float(unified_memory_bytes) / (1024 ** 3), 2)
     except Exception:
-        pass
+        # psutil is optional or may fail in restricted containers; fall back to 0.0 GB.
+        unified_memory_bytes = 0
+        unified_memory_gb = 0.0
 
     mps_fallback_raw = os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", "").strip()
     mps_fallback_enabled = mps_fallback_raw.lower() in {"1", "true", "yes", "on"}

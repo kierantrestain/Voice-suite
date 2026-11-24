@@ -65,10 +65,12 @@ GET /archetypes/previews/status
 GET /archetypes/{archetype_id}
 GET /archetypes/{archetype_id}/preview
 GET /archetypes/{archetype_id}/preview/state
+GET /audio/{audio_id}.flac
 GET /audio/{audio_id}.mp3
 GET /audio/{audio_id}.ogg
 GET /audio/{audio_id}.opus
 GET /audio/{audio_id}/quality
+GET /audio/{audio_id}_24bit.wav
 GET /audiobook/jobs
 GET /batch/download/{job_id}/{lang}
 GET /batch/jobs
@@ -337,10 +339,12 @@ POST /system/tailscale/disable
 POST /system/tailscale/enable
 POST /tasks/cancel/{task_id}
 POST /tools/direction
+POST /tools/finish-audio
 POST /tools/incremental
 POST /tools/normalize-speech
 POST /tools/probe
 POST /tools/rate-fit
+POST /tools/trim-audio
 POST /tools/video-context/{job_id}
 POST /transcribe
 POST /v1/audio/speech

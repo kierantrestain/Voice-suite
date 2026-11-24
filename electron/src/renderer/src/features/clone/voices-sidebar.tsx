@@ -364,7 +364,7 @@ export function SavedVoices({
                     </p>
                   )}
                 </div>
-                <div className="absolute right-2 z-20 flex items-center gap-0.5 rounded-md bg-sidebar bg-[linear-gradient(var(--sidebar-accent),var(--sidebar-accent))] p-0.5 opacity-0 shadow-sm ring-1 ring-sidebar-border/50 transition-opacity duration-150 group-hover/profile:opacity-100 group-focus-within/profile:opacity-100">
+                <div className="pointer-events-none absolute right-1 z-20 flex items-center gap-0 rounded-md bg-sidebar bg-[linear-gradient(var(--sidebar-accent),var(--sidebar-accent))] p-0.5 opacity-0 shadow-sm ring-1 ring-sidebar-border/50 transition-opacity duration-150 group-hover/profile:pointer-events-auto group-hover/profile:opacity-100 group-focus-within/profile:pointer-events-auto group-focus-within/profile:opacity-100 [&_button]:size-5">
                   {profile.ref_audio_path ||
                   profile.locked_audio_path ||
                   profile.kind === 'design' ? (

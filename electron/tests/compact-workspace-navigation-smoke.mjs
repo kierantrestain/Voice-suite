@@ -61,9 +61,10 @@ try {
   await page.keyboard.press('Escape');
   await clone.waitFor({ state: 'hidden' });
   await expectFocus(page, voice);
+  const saved = page.getByRole('link', { name: 'Saved', exact: true });
   await page.keyboard.press('ArrowRight');
-  await clone.waitFor();
-  await expectFocus(page, clone);
+  await saved.waitFor();
+  await expectFocus(page, saved);
   await page.keyboard.press('ArrowLeft');
   await clone.waitFor({ state: 'hidden' });
   await expectFocus(page, voice);

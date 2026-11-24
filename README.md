@@ -93,15 +93,10 @@ Start with **Voice Suite** (default, powered by k2-fsa/OmniVoice), or pick from 
 
 **Voice Suite** is a 100% local-first desktop and web application with zero required cloud accounts, subscriptions, or paid license tiers. All audio synthesis, voice cloning, transcription, and dubbing pipelines run directly on your hardware.
 
-- **Application License (GNU AGPL-3.0)**: The application code is free and open-source software under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). It is free for personal, internal, and commercial/production use. If you modify the application and distribute it or make it available to users over a network, you must offer the complete corresponding source code under the same AGPL-3.0 terms (see [LICENSE-NOTICE.md](LICENSE-NOTICE.md)).
-- **Model Weights Licensing**: Model weights, tokenizers, and voice assets are governed by their own upstream licenses, which are distinct from the application license. For example, the default `k2-fsa/OmniVoice` pretrained weights are licensed for non-commercial use (`CC-BY-NC`), whereas engines such as Kokoro, Piper, and Faster-Whisper carry permissive open-source licenses (Apache-2.0 / MIT). Always review each model's license in the Model Manager before commercial deployment.
-- **Hardware Acceleration & Local Setup**: Optimized for Apple Silicon (Metal / MPS and MLX engines), NVIDIA CUDA, AMD ROCm, Vulkan GGUF runtimes, and multi-core CPU execution across macOS, Windows, and Linux. To run from source:
-  ```bash
-  bun install
-  uv sync
-  bun run dev
-  ```
-- **Upstream Attribution**: Voice Suite is derived from [VoiceStudio](https://github.com/debpalash/VoiceStudio) by Palash Debnath (`debpalash/voicestudio`) and integrates the [OmniVoice](https://github.com/k2-fsa/OmniVoice) TTS architecture by Han Zhu (`k2-fsa/OmniVoice`, Apache-2.0).
+- **Application License (GNU AGPL-3.0)**: The application code is free and open-source software under the <a href="LICENSE">GNU Affero General Public License v3.0</a> (AGPL-3.0-only). It is free for personal, internal, and commercial/production use. If you modify the application and distribute it or make it available to users over a network, you must offer the complete corresponding source code under the same AGPL-3.0 terms (see <a href="LICENSE-NOTICE.md">LICENSE-NOTICE.md</a>).
+- **Model Weights Licensing**: Model weights, tokenizers, and voice assets are governed by their own upstream licenses, which are distinct from the application license. For example, the default k2-fsa/OmniVoice pretrained weights are licensed for non-commercial use (CC-BY-NC), whereas engines such as Kokoro, Piper, and Faster-Whisper carry permissive open-source licenses (Apache-2.0 / MIT). Always review each model's license in the Model Manager before commercial deployment.
+- **Hardware Acceleration & Local Setup**: Optimized for Apple Silicon (Metal / MPS and MLX engines), NVIDIA CUDA, AMD ROCm, Vulkan GGUF runtimes, and multi-core CPU execution across macOS, Windows, and Linux. See Get started below for source setup instructions.
+- **Upstream Attribution**: Voice Suite is derived from <a href="https://github.com/debpalash/VoiceStudio">VoiceStudio</a> by Palash Debnath (debpalash/voicestudio) and integrates the <a href="https://github.com/k2-fsa/OmniVoice">OmniVoice</a> TTS architecture by Han Zhu (k2-fsa/OmniVoice, Apache-2.0).
 
 ## Platforms
 
@@ -479,6 +474,7 @@ The VoiceStudio app is free and needs no paid cloud. Sponsors keep it shipping: 
     <a href="https://github.com/debpalash/OpenGTM?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opengtm-dark.svg" /><img src="docs/sponsors/opengtm.svg" alt="OpenGTM" height="48" align="middle" /></picture></a>
     <a href="https://github.com/debpalash/Opal?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opal-dark.svg" /><img src="docs/sponsors/opal.svg" alt="Opal" height="48" align="middle" /></picture></a>
     <a href="https://github.com/velixio/supermetry?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/supermetry-dark.svg" /><img src="docs/sponsors/supermetry.svg" alt="Supermetry" height="48" align="middle" /></picture></a>
+    <a href="https://spicrawl.com?utm_source=voicestudio&amp;utm_medium=github_readme&amp;utm_campaign=special_sponsor&amp;utm_content=logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/spicrawl-dark.svg" /><img src="docs/sponsors/spicrawl.svg" alt="Spicrawl" height="48" align="middle" /></picture></a>
 </p>
 
 For sponsorship inquiries, contact [sponsor@voicestudio.sh](mailto:sponsor@voicestudio.sh).

@@ -159,7 +159,7 @@ export function ClonePage() {
               <h1 className="truncate text-sm font-medium">{t('clone.title')}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              <ModelRightsIndicator engine={activeTts} compact />
+              <ModelRightsIndicator engine={activeTts} compact className="hidden xl:flex" />
               <SupportShortcut />
               <Button
                 variant="ghost"

@@ -5,29 +5,26 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 try {
   await page.goto((process.env.VOICESTUDIO_UI_URL || 'http://localhost:3912') + '/#/settings/appearance');
   await page.getByRole('link', { name: 'Support', exact: true }).click();
-  await page.getByRole('heading', { name: 'Donate to VoiceStudio Project', exact: true }).waitFor();
-  await page.getByRole('progressbar').waitFor();
-  assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '5');
+  await page.getByRole('heading', { name: 'Voice Suite — Local-First Open Source & Licensing', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'GNU Affero General Public License v3.0 (AGPL-3.0)', exact: true }).waitFor();
   assert.equal(
-    await page.getByRole('link', { name: 'PayPal', exact: true }).getAttribute('href'),
-    'https://paypal.me/palashCoder',
+    await page.getByRole('link', { name: 'Upstream VoiceStudio Repository', exact: true }).getAttribute('href'),
+    'https://github.com/debpalash/VoiceStudio',
   );
   assert.equal(
-    await page.getByRole('link', { name: 'GitHub Sponsors', exact: true }).first().getAttribute('href'),
-    'https://github.com/sponsors/debpalash',
+    await page.getByRole('link', { name: 'k2-fsa/OmniVoice', exact: true }).getAttribute('href'),
+    'https://github.com/k2-fsa/OmniVoice',
   );
-  await page.getByRole('button', { name: '$50', exact: true }).click();
   assert.equal(
-    await page.getByRole('link', { name: 'PayPal', exact: true }).getAttribute('href'),
-    'https://paypal.me/palashCoder/50',
+    await page.getByRole('link', { name: 'AGPL-3.0 License Terms', exact: true }).getAttribute('href'),
+    'https://www.gnu.org/licenses/agpl-3.0.html',
   );
-  await page.getByRole('button', { name: 'Custom', exact: true }).click();
   assert.equal(
     await page.getByRole('link', { name: 'Report privately', exact: true }).getAttribute('href'),
     'https://github.com/debpalash/VoiceStudio/security/advisories/new',
   );
   console.log(
-    'Support navigation, amount selection and private security destination passed; no external page opened.',
+    'Support navigation, AGPL-3.0 licensing, upstream attribution and private security destination passed; no external page opened.',
   );
 } finally {
   await browser.close();

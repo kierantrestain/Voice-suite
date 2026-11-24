@@ -107,6 +107,14 @@ try {
     $asset = "$prefix-$vsVersion-win-x64.exe"
     if ($onArm -and $mode -eq 'main') { $asset = "$prefix-$vsVersion-win-arm64.exe" }
     $package = Join-Path $packageDir $asset
+    if ($mode -eq 'main' -and -not (Test-Path $package)) {
+        $brandedAsset = if ($onArm) { "Voice-Suite-$vsVersion-win-arm64.exe" } else { "Voice-Suite-$vsVersion-win-x64.exe" }
+        $brandedPackage = Join-Path $packageDir $brandedAsset
+        if (Test-Path $brandedPackage) {
+            $asset = $brandedAsset
+            $package = $brandedPackage
+        }
+    }
     if ($mode -eq 'binary') {
         $base = "https://github.com/debpalash/VoiceStudio/releases/download/v$vsVersion"
         $downloaded = $false
