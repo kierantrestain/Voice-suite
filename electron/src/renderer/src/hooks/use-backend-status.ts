@@ -3,6 +3,7 @@ import { onlineManager } from '@tanstack/react-query';
 import { isBackendReachable } from '@shared/utils/backendStage';
 import { noteBackendStage } from '@/lib/status-polling';
 import { DEFAULT_BACKEND_PORT } from '@shared/app-config';
+import { HOSTED_FRONTEND, hostedBackendUrl, probeHostedBackend } from '@/lib/hosted-backend';
 
 // Derived from the global `Window.voicestudio` declaration (src/preload/index.d.ts,
 // included by tsconfig.web.json) rather than imported by path: with
@@ -36,9 +37,19 @@ function bridge(): VoiceStudioBridge['backend'] | null {
 }
 
 const nativeBackend = bridge();
+// A hosted frontend has no supervisor: its configured remote backend starts
+// unconfirmed ('attaching'), or 'idle' when no backend URL is configured.
+const hostedUrl = !nativeBackend && HOSTED_FRONTEND ? hostedBackendUrl() : '';
 let current: BackendStatus = nativeBackend
   ? { ...FALLBACK_BACKEND_STATUS, stage: 'attaching' }
-  : FALLBACK_BACKEND_STATUS;
+  : !nativeBackend && HOSTED_FRONTEND
+    ? {
+        ...FALLBACK_BACKEND_STATUS,
+        stage: hostedUrl ? 'attaching' : 'idle',
+        baseUrl: hostedUrl,
+        remote: true,
+      }
+    : FALLBACK_BACKEND_STATUS;
 let browserOnline = typeof navigator === 'undefined' || navigator.onLine !== false;
 
 /** Local requests need a live backend; remote requests also need a connection. */
@@ -71,6 +82,45 @@ if (nativeBackend) {
 let revision = 0;
 const listeners = new Set<() => void>();
 let bridgeUnsubscribe: (() => void) | null = null;
+let hostedTimer: ReturnType<typeof setTimeout> | null = null;
+/** Extra facts for the hosted connection indicator (version, device, engine). */
+let hostedDetail = '';
+
+export function getHostedBackendDetail(): string {
+  return hostedDetail;
+}
+
+const HOSTED_POLL_READY_MS = 15_000;
+const HOSTED_POLL_DOWN_MS = 5_000;
+
+/** Poll the hosted backend's /health and publish ready/starting/failed. */
+let hostedInFlight = false;
+async function pollHostedBackend(): Promise<void> {
+  hostedTimer = null;
+  if (!hostedUrl || listeners.size === 0 || hostedInFlight) return;
+  hostedInFlight = true;
+  const probe = await probeHostedBackend(hostedUrl).finally(() => {
+    hostedInFlight = false;
+  });
+  if (listeners.size === 0) return;
+  const starting = !probe.ok && probe.kind === 'http' && probe.status === 503;
+  hostedDetail = probe.ok ? probe.detail : '';
+  const stage: BackendStage = probe.ok ? 'ready' : starting ? 'starting' : 'failed';
+  if (stage !== current.stage)
+    publish({ ...current, stage, message: probe.ok ? undefined : probe.kind });
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  hostedTimer = setTimeout(
+    () => void pollHostedBackend(),
+    (probe.ok ? HOSTED_POLL_READY_MS : HOSTED_POLL_DOWN_MS) * (hidden ? 4 : 1),
+  );
+}
+
+/** Re-probe now (the indicator's Retry), instead of waiting for the next poll. */
+export function recheckHostedBackend(): void {
+  if (!hostedUrl) return;
+  if (hostedTimer) clearTimeout(hostedTimer);
+  void pollHostedBackend();
+}
 
 function publish(status: BackendStatus): void {
   revision++;
@@ -86,6 +136,7 @@ export function getBackendStatusSnapshot(): BackendStatus {
 
 export function subscribeBackendStatus(listener: () => void): () => void {
   listeners.add(listener);
+  if (hostedUrl && !hostedTimer && listeners.size === 1) void pollHostedBackend();
   const api = bridge();
   if (api && !bridgeUnsubscribe) {
     bridgeUnsubscribe = api.onStatus(publish);
@@ -102,6 +153,10 @@ export function subscribeBackendStatus(listener: () => void): () => void {
   }
   return () => {
     listeners.delete(listener);
+    if (listeners.size === 0 && hostedTimer) {
+      clearTimeout(hostedTimer);
+      hostedTimer = null;
+    }
     if (listeners.size === 0 && bridgeUnsubscribe) {
       bridgeUnsubscribe();
       bridgeUnsubscribe = null;

@@ -6,9 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 const electronRoot = resolve(import.meta.dirname, '..');
 const rendererRoot = resolve(electronRoot, 'src/renderer');
-const version = JSON.parse(
-  readFileSync(resolve(electronRoot, '../package.json'), 'utf8'),
-).version;
+const version = JSON.parse(readFileSync(resolve(electronRoot, '../package.json'), 'utf8')).version;
 const backendPort = process.env.OMNIVOICE_PORT || '3900';
 const uiPort = Number(process.env.VOICESTUDIO_SMOKE_PORT) || 3912;
 
@@ -34,6 +32,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
     __BUILD_COMMIT__: JSON.stringify('000000000'),
     __WEB_DEPLOYMENT__: false,
+    __HOSTED_FRONTEND__: false,
   },
   resolve: {
     alias: {

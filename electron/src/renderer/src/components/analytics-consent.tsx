@@ -117,7 +117,8 @@ export function AnalyticsRuntime() {
   // from here, on the early answer until the backend can give its own.
   const allowed = analytics.data
     ? analytics.data.available && analytics.data.opted_in && !backend.analyticsDisabled
-    : analyticsAvailable() && setupAnalyticsAllowed(readSetupAnalytics(), backend.analyticsDisabled);
+    : analyticsAvailable() &&
+      setupAnalyticsAllowed(readSetupAnalytics(), backend.analyticsDisabled);
   useEffect(() => {
     const events = funnel.current.observe(backend, setupWasCompleted(), allowed);
     if (!allowed || !events.length) return;
@@ -230,7 +231,7 @@ export function AnalyticsConsent({
         variant="link"
         className="h-auto p-0"
         onClick={() => {
-          const url = 'https://github.com/debpalash/VoiceStudio#-faq';
+          const url = 'https://github.com/kierantrestain/Voice-suite#-faq';
           const bridge = getBridge();
           if (bridge) void bridge.files.openExternal(url).catch(() => setFailed(true));
           else window.open(url, '_blank', 'noopener,noreferrer');

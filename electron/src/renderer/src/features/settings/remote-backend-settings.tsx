@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getBridge } from '@/components/bridge';
+import { HOSTED_FRONTEND, hostedBackendApi, type HostedProbe } from '@/lib/hosted-backend';
 import { SettingsRow, SettingsSection } from './settings-layout';
 
-type Probe = Awaited<
-  ReturnType<NonNullable<ReturnType<typeof getBridge>>['backend']['testRemote']>
->;
+type Probe =
+  | Awaited<ReturnType<NonNullable<ReturnType<typeof getBridge>>['backend']['testRemote']>>
+  | HostedProbe;
 
 export function RemoteBackendSettings({
   reload = () => window.location.reload(),
@@ -19,11 +20,12 @@ export function RemoteBackendSettings({
   reload?: () => void;
 }) {
   const { t } = useTranslation();
-  const bridge = getBridge();
+  // The desktop bridge, or on a hosted frontend (Vercel) its browser stand-in.
+  const backend = getBridge()?.backend ?? (HOSTED_FRONTEND ? hostedBackendApi : null);
   const connection = useQuery({
     queryKey: ['backend-connection'],
-    queryFn: () => bridge!.backend.getConnection(),
-    enabled: Boolean(bridge),
+    queryFn: () => backend!.getConnection(),
+    enabled: Boolean(backend),
     // An IPC read of the saved URL, not a network request. Query's default
     // `online` mode pauses it whenever the backend is down, which is exactly
     // when the gate shows this form to recover a failed remote.
@@ -41,13 +43,13 @@ export function RemoteBackendSettings({
 
   const input = () => ({ url: url.trim(), apiKey: apiKey.trim() });
   const test = async () => {
-    if (!bridge || busy) return;
+    if (!backend || busy) return;
     setBusy('test');
     setProbe(null);
     const request = input();
     setApiKey('');
     try {
-      setProbe(await bridge.backend.testRemote(request));
+      setProbe(await backend.testRemote(request));
     } catch {
       setProbe({ ok: false, kind: 'network', target: request.url });
     } finally {
@@ -56,12 +58,12 @@ export function RemoteBackendSettings({
   };
 
   const save = async () => {
-    if (!bridge || busy) return;
+    if (!backend || busy) return;
     setBusy('save');
     const request = input();
     setApiKey('');
     try {
-      const result = await bridge.backend.useRemote(request);
+      const result = await backend.useRemote(request);
       setProbe(result);
       if (result.ok) reload();
     } catch {
@@ -72,10 +74,10 @@ export function RemoteBackendSettings({
   };
 
   const useLocal = async () => {
-    if (!bridge || busy) return;
+    if (!backend || busy) return;
     setBusy('local');
     try {
-      await bridge.backend.useLocal();
+      await backend.useLocal();
       reload();
     } finally {
       setBusy(null);
@@ -86,24 +88,32 @@ export function RemoteBackendSettings({
     ? t('settings.remote_backend_probe_ok', { detail: probe.detail })
     : probe?.kind === 'invalid'
       ? t('settings.remote_backend_invalid_url')
-      : probe?.kind === 'auth'
-        ? t('settings.remote_backend_error_http', { status: probe.status ?? 401 })
-        : probe
-          ? t(`settings.remote_backend_error_${probe.kind}`, { status: probe.status })
-          : '';
+      : probe?.kind === 'mixed_content'
+        ? t('hosted.error_mixed_content')
+        : probe?.kind === 'network' && HOSTED_FRONTEND
+          ? t('hosted.error_network', { origin: window.location.origin })
+          : probe?.kind === 'auth'
+            ? t('settings.remote_backend_error_http', { status: probe.status ?? 401 })
+            : probe
+              ? t(`settings.remote_backend_error_${probe.kind}`, { status: probe.status })
+              : '';
 
   return (
     <SettingsSection icon={ServerCogIcon} title={t('settings.remote_backend_title')}>
       <SettingsRow
         id="remote-backend-url"
         title={t('settings.remote_backend_url')}
-        description={t('settings.remote_backend_desc')}
+        description={t(HOSTED_FRONTEND ? 'hosted.backend_desc' : 'settings.remote_backend_desc')}
       >
         <Input
           value={url}
           className="min-w-64 font-mono"
           aria-label={t('settings.remote_backend_url')}
-          placeholder={`http://gpu-box:${DEFAULT_BACKEND_PORT}`}
+          placeholder={
+            HOSTED_FRONTEND
+              ? 'https://voice-backend.example.com'
+              : `http://gpu-box:${DEFAULT_BACKEND_PORT}`
+          }
           autoComplete="off"
           spellCheck={false}
           disabled={Boolean(busy)}
@@ -142,7 +152,7 @@ export function RemoteBackendSettings({
         </Button>
         {connection.data?.remote && (
           <Button variant="ghost" size="sm" disabled={Boolean(busy)} onClick={useLocal}>
-            {t('settings.remote_backend_use_local')}
+            {t(HOSTED_FRONTEND ? 'hosted.disconnect' : 'settings.remote_backend_use_local')}
           </Button>
         )}
         {probe && (

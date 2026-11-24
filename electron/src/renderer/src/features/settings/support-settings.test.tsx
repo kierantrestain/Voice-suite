@@ -44,10 +44,10 @@ it('keeps bug reporting and security advisory links accessible', () => {
   const securityLink = screen.getByRole('link', { name: 'contact.security_cta' });
   expect(securityLink).toHaveAttribute(
     'href',
-    'https://github.com/debpalash/VoiceStudio/security/advisories/new',
+    'https://github.com/kierantrestain/Voice-suite/security/advisories/new',
   );
   fireEvent.click(securityLink);
   expect(mock.open).toHaveBeenCalledWith(
-    'https://github.com/debpalash/VoiceStudio/security/advisories/new',
+    'https://github.com/kierantrestain/Voice-suite/security/advisories/new',
   );
 });

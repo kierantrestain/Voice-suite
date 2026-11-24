@@ -45,7 +45,7 @@ import './twilio-setup.css';
 import { relaxWhenBackendBusy } from '@/lib/status-polling';
 
 export const TWILIO_DOCS =
-  'https://github.com/debpalash/VoiceStudio/blob/main/docs/integrations/twilio.md';
+  'https://github.com/kierantrestain/Voice-suite/blob/main/docs/integrations/twilio.md';
 const STATE_PATH = '/api/integrations/twilio/state';
 const QUERY_KEY = ['integrations', 'twilio'] as const;
 /**

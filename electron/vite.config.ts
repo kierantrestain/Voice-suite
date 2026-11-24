@@ -19,6 +19,7 @@ export default defineConfig({
     __BUILD_COMMIT__: JSON.stringify('000000000'),
     __DISTRIBUTION_TARGET__: JSON.stringify('direct'),
     __WEB_DEPLOYMENT__: false,
+    __HOSTED_FRONTEND__: false,
   },
   resolve: {
     alias: {

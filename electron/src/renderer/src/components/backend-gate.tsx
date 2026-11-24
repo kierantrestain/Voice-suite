@@ -55,6 +55,8 @@ import { cn } from '@/lib/utils';
 import { getBridge, isMac } from './bridge';
 import { ExternalLink } from './external-link';
 import { SetupHelpLinks, SetupUpdateNotice, SetupVersion } from './setup-extras';
+import { HostedBackendBar } from './hosted-backend-bar';
+import { HOSTED_FRONTEND } from '@/lib/hosted-backend';
 
 interface BackendGateProps {
   children: ReactNode;
@@ -176,6 +178,19 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
     if (panel)
       document.getElementById(`setup-panel-${panel}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [panel]);
+
+  // A hosted frontend (Vercel) has no local backend to install or start. The
+  // interface stays browsable with an explicit disconnected indicator; only a
+  // backend that /health confirmed reaches the first-run setup check.
+  if (HOSTED_FRONTEND && !window.voicestudio?.backend) {
+    const reachable = status.stage === 'ready' || busy;
+    return (
+      <div className="contents">
+        {reachable ? <SetupGate>{children}</SetupGate> : children}
+        <HostedBackendBar status={status} />
+      </div>
+    );
+  }
 
   if (status.stage === 'ready' || busy)
     return (

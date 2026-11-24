@@ -7,7 +7,12 @@ import { INTEGRATION_SETUPS } from './setup-registry';
 import en from '@/i18n/locales/en.json';
 vi.mock('@shared/config/sponsors', () => ({
   SPONSORS: [
-    { name: 'Example sponsor', url: 'https://example.org', logoUrl: '/example.svg', tier: 'strategic' },
+    {
+      name: 'Example sponsor',
+      url: 'https://example.org',
+      logoUrl: '/example.svg',
+      tier: 'strategic',
+    },
   ],
 }));
 const route = vi.hoisted(() => ({ slug: 'claude-code' }));
@@ -31,7 +36,8 @@ vi.mock('@/hooks/use-backend-status', () => ({
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 vi.mock('./twilio-setup', () => ({
-  TWILIO_DOCS: 'https://github.com/debpalash/VoiceStudio/blob/main/docs/integrations/twilio.md',
+  TWILIO_DOCS:
+    'https://github.com/kierantrestain/Voice-suite/blob/main/docs/integrations/twilio.md',
   TwilioSetup: ({
     hero,
     rail,
@@ -85,7 +91,7 @@ it('shows the Codex TOML export and one heading per panel', () => {
     '~/.codex/config.toml',
   );
   expect(screen.getByRole('heading', { name: 'Set up Codex CLI' })).toBeInTheDocument();
-  expect(screen.getByText('Works with VoiceStudio')).toBeInTheDocument();
+  expect(screen.getByText('Works with Voice Suite')).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Details' })).toBeNull();
 });
 
@@ -93,7 +99,7 @@ it('does not expose detail pages for entries without completed wiring', () => {
   route.slug = 'zapier';
   render(<IntegrationDetailPage />);
   expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull();
-  expect(screen.queryByText('Works with VoiceStudio')).toBeNull();
+  expect(screen.queryByText('Works with Voice Suite')).toBeNull();
   expect(screen.getByText('No matches')).toBeInTheDocument();
 });
 
@@ -112,7 +118,7 @@ it('shows the OpenAI Agents snippet for the live backend', async () => {
   Object.defineProperty(navigator, 'clipboard', { value: { writeText: copy }, configurable: true });
   render(<IntegrationDetailPage />);
   expect(screen.getByText(/Point the OpenAI Agents SDK voice pipeline/)).toBeInTheDocument();
-  expect(screen.getByText('Works with VoiceStudio')).toBeInTheDocument();
+  expect(screen.getByText('Works with Voice Suite')).toBeInTheDocument();
   expect(screen.getByText('Local language model')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
   await waitFor(() => expect(copy).toHaveBeenCalledTimes(1));
@@ -125,7 +131,7 @@ it('renders Twilio from the registry as a working connector with its setup panel
   render(<IntegrationDetailPage />);
   expect(screen.getByRole('heading', { name: 'Twilio', level: 2 })).toBeInTheDocument();
   expect(screen.getByText('Twilio phone setup panel')).toBeInTheDocument();
-  expect(screen.getByText('Works with VoiceStudio')).toBeInTheDocument();
+  expect(screen.getByText('Works with Voice Suite')).toBeInTheDocument();
   expect(screen.getByText('Phone calls')).toBeInTheDocument();
   expect(screen.queryByText(/Directory examples only/)).toBeNull();
   expect(screen.queryByText(/Setup is unavailable/)).toBeNull();

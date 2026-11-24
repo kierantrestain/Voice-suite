@@ -46,7 +46,7 @@ afterEach(() => {
 it('links the running version to its release notes', () => {
   render(<HomePage />);
   const link = screen.getByRole('link', { name: /update\.whats_new/ });
-  expect(link).toHaveAttribute('href', 'https://github.com/debpalash/VoiceStudio/releases');
+  expect(link).toHaveAttribute('href', 'https://github.com/kierantrestain/Voice-suite/releases');
   expect(link).toHaveTextContent('app.version');
 });
 
@@ -93,9 +93,8 @@ it('separates three primary creation actions and covers all ten studio dashboard
     '/design',
     '/dub',
   ]);
-  const secondaryLinks = Array.from(
-    primary.nextElementSibling?.querySelectorAll('a') ?? [],
-    (a) => a.getAttribute('href'),
+  const secondaryLinks = Array.from(primary.nextElementSibling?.querySelectorAll('a') ?? [], (a) =>
+    a.getAttribute('href'),
   );
   expect(secondaryLinks).toEqual([
     '/personas',

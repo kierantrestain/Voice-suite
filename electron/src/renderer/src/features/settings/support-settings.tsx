@@ -62,10 +62,7 @@ export function SupportSettings() {
       </header>
 
       <div className="support-opportunities">
-        <section
-          className="support-tile support-license"
-          aria-labelledby="support-agpl-heading"
-        >
+        <section className="support-tile support-license" aria-labelledby="support-agpl-heading">
           <ScaleIcon className="support-tile-icon" aria-hidden="true" />
           <h2 id="support-agpl-heading">GNU Affero General Public License v3.0 (AGPL-3.0)</h2>
           <p>
@@ -90,12 +87,10 @@ export function SupportSettings() {
             community.
           </p>
           <div className="support-tile-actions">
-            <ExternalLink href="https://github.com/debpalash/VoiceStudio">
+            <ExternalLink href="https://github.com/kierantrestain/Voice-suite">
               Upstream VoiceStudio Repository
             </ExternalLink>
-            <ExternalLink href="https://github.com/k2-fsa/OmniVoice">
-              k2-fsa/OmniVoice
-            </ExternalLink>
+            <ExternalLink href="https://github.com/k2-fsa/OmniVoice">k2-fsa/OmniVoice</ExternalLink>
           </div>
         </section>
       </div>

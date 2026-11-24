@@ -8,3 +8,6 @@ declare const __BUILD_COMMIT__: string;
 
 /** True only for the browser bundle served by the Python backend. */
 declare const __WEB_DEPLOYMENT__: boolean;
+
+/** True only for the static hosted bundle (Vercel): the backend runs elsewhere. */
+declare const __HOSTED_FRONTEND__: boolean;
