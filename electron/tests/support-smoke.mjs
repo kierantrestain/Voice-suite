@@ -21,7 +21,7 @@ try {
   );
   assert.equal(
     await page.getByRole('link', { name: 'Report privately', exact: true }).getAttribute('href'),
-    'https://github.com/debpalash/VoiceStudio/security/advisories/new',
+    'https://github.com/kierantrestain/Voice-suite/security/advisories/new',
   );
   console.log(
     'Support navigation, AGPL-3.0 licensing, upstream attribution and private security destination passed; no external page opened.',
