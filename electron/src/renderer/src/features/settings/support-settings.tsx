@@ -87,7 +87,7 @@ export function SupportSettings() {
             community.
           </p>
           <div className="support-tile-actions">
-            <ExternalLink href="https://github.com/kierantrestain/Voice-suite">
+            <ExternalLink href="https://github.com/debpalash/VoiceStudio">
               Upstream VoiceStudio Repository
             </ExternalLink>
             <ExternalLink href="https://github.com/k2-fsa/OmniVoice">k2-fsa/OmniVoice</ExternalLink>
