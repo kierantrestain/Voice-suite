@@ -16,6 +16,8 @@ Environment: Linux x86-64 container, 4 vCPU, 15.7 GB RAM, no GPU, Python 3.11.18
 | Hosted-backend module | `hosted-backend.test.ts` | 11 passed; the session regression test fails on the pre-fix code and passes after |
 | Hosted production build | `VOICE_SUITE_HOSTED=1 bun run build:web` | pass (clean checkout, ~8 s incl. install) |
 | PR #6 CI before this session | GitHub Actions on `10bdaac` | all desktop, Python, Electron, crawler, install, CodeQL, gitleaks, bandit checks green; only `android` failed (out of scope) |
+| CI run `45505984177` (on `55155c1`) | GitHub Actions | 4 real failures fixed: support smoke expected the old repo link (the upstream attribution link had been redirected by mistake — restored; private security reports now go to this repository), and the desktop harness's local-first guard only allowed the upstream star-count request (now allows only this repository's) |
+| Final PR #6 CI (on `f7a1b6d`) | GitHub Actions | renderer smokes, desktop UI (Linux/macOS/Windows), Python, Electron, crawlers, install, CodeQL, gitleaks, bandit green; one Windows `Install Electron deps` network flake re-run; mobile jobs excluded |
 
 ## 2. Browser end-to-end (hosted build against a real backend)
 
