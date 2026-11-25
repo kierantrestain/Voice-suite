@@ -4,7 +4,7 @@
   <h3>Clone, design, dub, dictate, transcribe and narrate in 646 languages.</h3>
   <p>Runs on your laptop, desktop, servers, phone, tablets and more</p>
   <p>
-    <a href="https://github.com/debpalash/VoiceStudio/releases/latest">Download</a> ·
+    <a href="#get-voice-suite">Get Voice Suite</a> ·
     <a href="#get-started">Get started</a> ·
     <a href="#local-first-architecture--model-licensing">Architecture &amp; Licensing</a> ·
     <a href="#documentation">Docs</a>
@@ -38,7 +38,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/debpalash/VoiceStudio/releases/latest"><img src="https://img.shields.io/badge/Download-993f61?style=for-the-badge&amp;logo=github&amp;logoColor=ffffff" alt="Download" height="24" /></a>
+  <a href="#get-voice-suite"><img src="https://img.shields.io/badge/Get%20Voice%20Suite-993f61?style=for-the-badge" alt="Get Voice Suite" height="24" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/Get%20started-27272a?style=for-the-badge" alt="Get started" height="24" /></a>
 </p>
 
@@ -89,6 +89,18 @@
 
 Start with **Voice Suite** (default, powered by k2-fsa/OmniVoice), or pick from dozens of other engines in the Model Manager. (Upstream compatibility: **VoiceStudio** (default, powered by k2-fsa/OmniVoice)). See the [features & engine catalog](docs/feature-catalog.md).
 
+## Get Voice Suite
+
+Voice Suite is built from this repository ([kierantrestain/Voice-suite](https://github.com/kierantrestain/Voice-suite)). It does not yet publish its own signed installers; the platform installers listed under [Platforms](#platforms) are the upstream VoiceStudio builds.
+
+| Route | What runs where | Guide |
+|---|---|---|
+| **Hosted web app** (Vercel) | The interface is a static site; generation, cloning, dubbing and transcription run on a Voice Suite backend you host (Docker, CPU or NVIDIA GPU) and connect in **Settings → Sharing → Remote backend** with its API key | [Deployment](docs/handover/DEPLOYMENT.md) |
+| **Inference backend** (Docker) | `docker compose -f deploy/inference-backend/docker-compose.yml up -d --build` | [Deployment](docs/handover/DEPLOYMENT.md#2-inference-backend) |
+| **From source** (desktop or browser) | `git clone https://github.com/kierantrestain/Voice-suite.git`, then `bun run dev:web` or `bun run desktop` | [Get started](#get-started) |
+
+Handover documentation for maintainers is in [docs/handover](docs/handover/HANDOVER.md).
+
 ## Local-First Architecture & Model Licensing
 
 **Voice Suite** is a 100% local-first desktop and web application with zero required cloud accounts, subscriptions, or paid license tiers. All audio synthesis, voice cloning, transcription, and dubbing pipelines run directly on your hardware.
@@ -99,6 +111,8 @@ Start with **Voice Suite** (default, powered by k2-fsa/OmniVoice), or pick from 
 - **Upstream Attribution**: Voice Suite is derived from <a href="https://github.com/debpalash/VoiceStudio">VoiceStudio</a> by Palash Debnath (debpalash/voicestudio) and integrates the <a href="https://github.com/k2-fsa/OmniVoice">OmniVoice</a> TTS architecture by Han Zhu (k2-fsa/OmniVoice, Apache-2.0).
 
 ## Platforms
+
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
 
 Experimental [Windows ROCm setup](docs/install/windows-rocm.md) supports selected RDNA 2 RX 6000 GPUs with targets `gfx1030`, `gfx1031` or `gfx1032`; RX 6500 XT (`gfx1034`) is excluded. GPU transcription uses a CTranslate2 build with native
 `gfx1031` kernels that this repository builds from upstream source and pins by
@@ -426,11 +440,11 @@ If `voicestudio.sh` is unreachable, run the script straight from the repository:
 `curl -fsSL https://raw.githubusercontent.com/debpalash/VoiceStudio/main/scripts/install.sh | sh`.
 Prerequisites and behavior: [installer guide](docs/install/script.md).
 
-**From source**
+**From source** (Voice Suite)
 
 ```bash
-git clone https://github.com/debpalash/VoiceStudio.git
-cd VoiceStudio
+git clone https://github.com/kierantrestain/Voice-suite.git
+cd Voice-suite
 bun run dev
 ```
 
