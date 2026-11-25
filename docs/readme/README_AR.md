@@ -159,6 +159,8 @@ Handover documentation for maintainers is in [docs/handover](../../docs/handover
 
 ## المنصات
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 اختر نظامك، ثم قم بتوسيع طريقة التثبيت.
 
 تدعم محركات GGUF الأصلية أيضًا تسريع Vulkan الخاص بكل محرك على وحدات معالجة الرسومات AMD وIntel وNVIDIA ([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)). يختار OmniVoice GGUF وحدة معالجة الرسومات وحجم النموذج تلقائيًا على Windows وLinux. عند تعطل الفحص المخفي، تعيد عملية اكتشاف Vulkan المحاولة باستخدام ملخص أصلي؛ وتفشل عمليات بناء سطح المكتب لـWindows وLinux بدلًا من إصدار نسخة تفتقر إلى وحدة Vulkan بصمت.

@@ -159,6 +159,8 @@ Mọi thứ ở trên đều miễn phí, chạy trên phần cứng của bạn
 
 ## Nền tảng
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 Chọn hệ thống của bạn, sau đó mở rộng phương pháp cài đặt.
 
 Các bộ máy GGUF gốc cũng hỗ trợ tăng tốc Vulkan riêng cho từng bộ máy trên GPU AMD, Intel và NVIDIA ([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)). OmniVoice GGUF tự động chọn GPU và kích thước mô hình trên Windows và Linux. Nếu phép kiểm tra ẩn bị treo, quá trình phát hiện Vulkan thử lại bằng bản tóm tắt gốc; các bản dựng máy tính Windows và Linux sẽ thất bại thay vì âm thầm được phát hành mà thiếu mô-đun Vulkan.

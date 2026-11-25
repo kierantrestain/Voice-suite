@@ -159,6 +159,8 @@ Handover documentation for maintainers is in [docs/handover](../../docs/handover
 
 ## แพลตฟอร์ม
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 เลือกระบบของคุณ จากนั้นขยายวิธีการติดตั้ง
 
 เอนจิน GGUF แบบเนทีฟยังรองรับการเร่งความเร็ว Vulkan เฉพาะเอนจินบน GPU ของ AMD, Intel และ NVIDIA ([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)) OmniVoice GGUF เลือก GPU และขนาดโมเดลโดยอัตโนมัติบน Windows และ Linux หากการตรวจสอบที่ซ่อนอยู่ค้าง การตรวจหา Vulkan จะลองใหม่ด้วยข้อมูลสรุปแบบเนทีฟ ส่วนบิลด์เดสก์ท็อป Windows และ Linux จะล้มเหลวแทนการเผยแพร่โดยไม่มีโมดูล Vulkan อย่างเงียบ ๆ

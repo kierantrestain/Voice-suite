@@ -160,6 +160,8 @@ Handover documentation for maintainers is in [docs/handover](../../docs/handover
 
 ## Платформы
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 Выберите систему и раскройте нужный способ установки.
 
 Нативные движки GGUF также поддерживают собственное ускорение Vulkan на GPU AMD, Intel и NVIDIA ([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)). OmniVoice GGUF автоматически выбирает GPU и размер модели в Windows и Linux. Если скрытая проверка зависает, обнаружение Vulkan повторяет попытку с нативной сводкой; сборки настольного приложения для Windows и Linux завершаются ошибкой, а не выпускаются незаметно без модуля Vulkan.

@@ -159,6 +159,8 @@ Alles hierboven is gratis, draait op je eigen hardware en heeft geen account nod
 
 ## Platformen
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 Kies uw systeem en breid vervolgens een installatiemethode uit.
 
 Native GGUF-engines ondersteunen daarnaast enginespecifieke Vulkan-versnelling op GPU’s van AMD, Intel en NVIDIA ([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)). OmniVoice GGUF kiest op Windows en Linux automatisch de GPU en modelgrootte. Als een verborgen controle vastloopt, probeert Vulkan-detectie het opnieuw met een native samenvatting; desktopbuilds voor Windows en Linux mislukken als de Vulkan-module ontbreekt, zodat deze niet ongemerkt wordt weggelaten.

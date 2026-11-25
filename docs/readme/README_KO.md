@@ -160,6 +160,8 @@ Handover documentation for maintainers is in [docs/handover](../../docs/handover
 
 ## 지원 플랫폼
 
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
+
 운영체제를 선택하고 원하는 설치 방법을 펼쳐 보세요.
 
 네이티브 GGUF 엔진은 AMD, Intel 및 NVIDIA GPU에서 엔진별 Vulkan 가속도 지원합니다([OmniVoice](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration), [CosyVoice](../../docs/engines/cosyvoice-gguf.md)). OmniVoice GGUF는 Windows와 Linux에서 GPU와 모델 크기를 자동으로 선택합니다. 숨겨진 검사가 멈추면 Vulkan 감지는 네이티브 요약으로 다시 시도합니다. Windows 및 Linux 데스크톱 빌드는 Vulkan 모듈 없이 조용히 배포되는 대신 실패합니다.
