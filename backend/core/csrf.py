@@ -129,7 +129,10 @@ def allowed_origin_values() -> list[str]:
         "OMNIVOICE_ALLOWED_ORIGINS",
         f"http://localhost:{port},http://127.0.0.1:{port}," + ",".join(DEFAULT_DESKTOP_ORIGINS),
     ).split(",")
-    return [value.strip() for value in values if value.strip()]
+    from services.studio_sessions import desktop_pair_origin
+
+    origin = desktop_pair_origin()
+    return list(dict.fromkeys(value.strip() for value in [*values, origin] if value.strip()))
 
 
 def configured_allowed_origins() -> frozenset[tuple[str, str, int | None]]:

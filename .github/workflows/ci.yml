@@ -374,12 +374,13 @@ jobs:
         # Docker build (deploy/Dockerfile), which is what reddened main on #485.
         run: bun install --frozen-lockfile
 
-      # node:test suites for shared renderer modules (tests/frontend/*.test.mjs).
+      # node:test suites for shared renderer modules and the Cloud HTTP handler.
       # Node 22 strips TypeScript types natively; imports need explicit `.ts`.
       - name: Frontend unit tests
         if: steps.pass.outputs.hit != 'true'
         run: |
           node --test electron/tests/node-version.test.mjs
+          node --test tests/cloud/cloud-workflow.test.mjs
           bun run test:frontend
 
       # Electron used to be built only after a release started, so renderer,

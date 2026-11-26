@@ -118,6 +118,16 @@ export function SettingsNav({
   const needle = normalizeSettingsQuery(query);
   const sections = preferenceSections.filter((section) => sectionMatches(t, section, needle));
   const extraMatches = extras.filter((item) => keysMatch(t, item.fields, needle));
+  const advancedRoutes = new Set([
+    '/settings/network',
+    '/settings/sharing',
+    '/settings/credentials',
+    '/settings/performance',
+    '/settings/diagnostics',
+    '/settings/openapi',
+  ]);
+  const advancedActive =
+    location.kind === 'logs' || (location.kind === 'extra' && advancedRoutes.has(location.to));
   const onModels = location.kind === 'models';
   const families = matchingFamilies(t, needle, onModels);
   const pinned = {
@@ -125,6 +135,16 @@ export function SettingsNav({
     media: keysMatch(t, pinnedPages.media, needle),
     logs: keysMatch(t, pinnedPages.logs, needle),
   };
+  const renderExtra = ({ to, label, Icon }: SettingsNavExtra) => (
+    <NavLink
+      key={to}
+      to={to}
+      label={t(label)}
+      Icon={Icon}
+      current={location.kind === 'extra' && location.to === to}
+    />
+  );
+  const advanced = extraMatches.filter(({ to }) => advancedRoutes.has(to));
   const nothing =
     sections.length === 0 &&
     extraMatches.length === 0 &&
@@ -214,16 +234,8 @@ export function SettingsNav({
               />
             ))}
           {extraMatches
-            .filter(({ to }) => to !== '/settings/support')
-            .map(({ to, label, Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                label={t(label)}
-                Icon={Icon}
-                current={location.kind === 'extra' && location.to === to}
-              />
-            ))}
+            .filter(({ to }) => to !== '/settings/support' && !advancedRoutes.has(to))
+            .map(renderExtra)}
           {pinned.media && (
             <NavLink
               to="/settings/media"
@@ -232,13 +244,23 @@ export function SettingsNav({
               current={location.kind === 'media'}
             />
           )}
-          {pinned.logs && (
-            <NavLink
-              to="/settings/logs"
-              label={t('settings.logs')}
-              Icon={FileTextIcon}
-              current={location.kind === 'logs'}
-            />
+          {(advanced.length > 0 || pinned.logs) && (
+            <details open={advancedActive || Boolean(needle) || undefined}>
+              <summary className="min-h-9 cursor-pointer rounded-lg px-2 py-2 text-sm">
+                {t('dub.advanced')}
+              </summary>
+              <div className="grid gap-0.5 pl-2">
+                {advanced.map(renderExtra)}
+                {pinned.logs && (
+                  <NavLink
+                    to="/settings/logs"
+                    label={t('settings.logs')}
+                    Icon={FileTextIcon}
+                    current={location.kind === 'logs'}
+                  />
+                )}
+              </div>
+            </details>
           )}
         </nav>
         {nothing && (

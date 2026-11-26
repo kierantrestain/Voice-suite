@@ -10,24 +10,36 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from api.dependencies import require_consumer
 from core.auth import (
     CredentialTransport,
     PrincipalKind,
     authorization_credential_present,
+    credential_matches,
+    is_loopback,
     legacy_master_cookie_valid,
     master_header_valid,
     principal_for,
     remote_api_key,
 )
-from core.csrf import cookie_csrf_allowed, effective_scheme
+from core.csrf import cookie_csrf_allowed, effective_scheme, origin_allowed
 from services.admin_sessions import (
     SESSION_TTL_SECONDS,
     WS_TICKET_TTL_SECONDS,
     admin_session_store,
+)
+
+from services.studio_sessions import (
+    INVITE_TTL,
+    SESSION_TTL,
+    desktop_pair_key,
+    studio_invites,
+    studio_key,
+    studio_sessions,
 )
 
 
@@ -86,6 +98,7 @@ class _ExchangeAttemptLimiter:
 
 
 _exchange_attempt_limiter = _ExchangeAttemptLimiter()
+_invite_attempt_limiter = _ExchangeAttemptLimiter()
 
 
 class SessionRequest(BaseModel):
@@ -186,6 +199,74 @@ def create_session(payload: SessionRequest, request: Request) -> Response:
     return response
 
 
+class StudioInviteRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=80)
+
+
+def _studio_session(key: str) -> JSONResponse:
+    issued = studio_sessions.issue(key)
+    return JSONResponse(
+        {"token": issued.token, "expires_in": SESSION_TTL},
+        status_code=201,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/studio/desktop", include_in_schema=False)
+def desktop_studio_session(request: Request) -> JSONResponse:
+    """Executed by the Electron main process after its native consent dialog."""
+    key = desktop_pair_key()
+    if (
+        not key
+        or not request.client
+        or not is_loopback(request.client.host)
+        or request.headers.get("origin")
+        or not credential_matches(request.headers.get("x-voice-suite-pair"), key)
+    ):
+        raise HTTPException(status_code=403, detail="Desktop approval required")
+    return _studio_session(key)
+
+
+@router.post("/studio/invite", status_code=201)
+def create_studio_invite(request: Request) -> JSONResponse:
+    key = remote_api_key()
+    if not key or desktop_pair_key() or not master_header_valid(request):
+        _reject_master_exchange(request)
+    invite = studio_invites.issue(key)
+    return JSONResponse(
+        {"code": invite.token, "expires_in": INVITE_TTL},
+        status_code=201,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/studio/redeem", status_code=201)
+def redeem_studio_invite(payload: StudioInviteRequest, request: Request) -> JSONResponse:
+    key = remote_api_key()
+    if not key or desktop_pair_key():
+        raise HTTPException(status_code=503, detail="Shared server access is not configured")
+    if not request.headers.get("origin") or not origin_allowed(request):
+        raise HTTPException(status_code=403, detail="Browser origin rejected")
+    code = payload.code.strip()
+    if not studio_invites.resolve(code, key) or not studio_invites.revoke(code):
+        retry_after = _invite_attempt_limiter.register_failure(_client_id(request))
+        if retry_after is not None:
+            raise HTTPException(
+                status_code=429, detail="Try again in a minute",
+                headers={"Retry-After": str(retry_after)},
+            )
+        raise HTTPException(status_code=401, detail="The access code is invalid, used or expired")
+    _invite_attempt_limiter.clear(_client_id(request))
+    return _studio_session(key)
+
+
+@router.get("/studio/session", dependencies=[Depends(require_consumer)])
+def check_studio_session(request: Request) -> Response:
+    if principal_for(request).kind not in {PrincipalKind.STUDIO_SESSION, PrincipalKind.ADMIN_SESSION}:
+        raise HTTPException(status_code=401, detail="Connect to Voice Suite again")
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
 @router.delete("/session", status_code=204)
 def delete_session(request: Request) -> Response:
     principal = principal_for(request)
@@ -196,6 +277,8 @@ def delete_session(request: Request) -> Response:
         ):
             raise HTTPException(status_code=403, detail="browser origin rejected")
         admin_session_store.revoke_by_credential(principal.credential_id)
+    elif principal.kind is PrincipalKind.STUDIO_SESSION:
+        studio_sessions.revoke_by_credential(principal.credential_id)
     response = Response(status_code=204)
     _expire_cookie(response, request, "ov_session")
     return response
@@ -204,18 +287,20 @@ def delete_session(request: Request) -> Response:
 @router.post("/ws-ticket")
 def create_ws_ticket(payload: WebSocketTicketRequest, request: Request) -> JSONResponse:
     principal = principal_for(request)
-    if principal.kind is not PrincipalKind.ADMIN_SESSION:
-        raise HTTPException(status_code=403, detail="admin session required")
+    if principal.kind not in {PrincipalKind.ADMIN_SESSION, PrincipalKind.STUDIO_SESSION}:
+        raise HTTPException(status_code=403, detail="Browser session required")
     if (
         principal.transport is CredentialTransport.COOKIE
         and not cookie_csrf_allowed(request)
     ):
         raise HTTPException(status_code=403, detail="browser origin rejected")
+    scoped = principal.kind is PrincipalKind.STUDIO_SESSION
+    store = studio_sessions if scoped else admin_session_store
     try:
-        ticket = admin_session_store.issue_ws_ticket_for_credential(
+        ticket = store.issue_ws_ticket_for_credential(
             principal.credential_id,
             payload.path,
-            remote_api_key(),
+            studio_key() if scoped else remote_api_key(),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None

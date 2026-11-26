@@ -12,7 +12,15 @@
  * Nothing here fakes a backend. With no URL configured, or a backend that does
  * not answer, the app shows a disconnected state and API calls fail fast.
  */
-import { exchangeApiKey, clearAdminSession } from '@shared/api/authSession';
+import {
+  acceptStudioSession,
+  AuthSessionError,
+  clearAdminSession,
+  exchangeApiKey,
+  getAdminSession,
+  revokeAdminSession,
+} from '@shared/api/authSession';
+import { DESKTOP_PAIR_URL } from '@shared/desktop-pairing';
 
 /** True only for the static hosted bundle (`VOICE_SUITE_HOSTED=1 bun run build:web`). */
 export const HOSTED_FRONTEND: boolean =
@@ -41,9 +49,10 @@ function storage(): StorageLike | null {
   }
 }
 
-function buildDefault(): string {
+export function sharedServerUrl(): string {
   const value = (import.meta.env?.VITE_VOICE_SUITE_BACKEND_URL as string | undefined) ?? '';
-  return normalizeBackendUrl(value) ?? '';
+  const url = normalizeBackendUrl(value);
+  return url?.startsWith('https://') ? url : '';
 }
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
@@ -77,15 +86,15 @@ export function blockedAsMixedContent(url: string, pageProtocol: string): boolea
   return parsed.protocol === 'http:' && !LOOPBACK.has(parsed.hostname);
 }
 
-/** The saved backend URL, else the build's default, else '' (not connected). */
+/** The last explicitly connected backend, or an empty string. */
 export function hostedBackendUrl(store: StorageLike | null = storage()): string {
   try {
     const saved = normalizeBackendUrl(store?.getItem(HOSTED_BACKEND_STORAGE_KEY) ?? '');
     if (saved) return saved;
   } catch {
-    // Blocked storage falls back to the build default.
+    // Blocked storage leaves the connection unset.
   }
-  return buildDefault();
+  return '';
 }
 
 export function saveHostedBackendUrl(url: string, store: StorageLike | null = storage()): void {
@@ -96,6 +105,87 @@ export function saveHostedBackendUrl(url: string, store: StorageLike | null = st
 
 export function clearHostedBackendUrl(store: StorageLike | null = storage()): void {
   store?.removeItem(HOSTED_BACKEND_STORAGE_KEY);
+}
+
+export function hostedRequestInit(url: string): RequestInit {
+  const localNetwork = url.startsWith('http://127.0.0.1:');
+  const privateNetwork: RequestInit & { targetAddressSpace?: 'loopback' } = localNetwork
+    ? { targetAddressSpace: 'loopback' }
+    : {};
+  return { ...privateNetwork, credentials: 'omit', redirect: 'error', cache: 'no-store' };
+}
+
+function resolveInvite(value: string): { server: string; code: string } {
+  const raw = value.trim();
+  if (/^ovs_invite_[A-Za-z0-9_-]{43}$/.test(raw) && sharedServerUrl()) {
+    return { server: sharedServerUrl(), code: raw };
+  }
+  let invite: URL;
+  try {
+    invite = new URL(raw);
+  } catch {
+    throw new AuthSessionError(401);
+  }
+  const code = invite.hash.slice(1);
+  invite.hash = '';
+  const server = normalizeBackendUrl(invite.href);
+  if (!server?.startsWith('https://') || !/^ovs_invite_[A-Za-z0-9_-]{43}$/.test(code)) {
+    throw new AuthSessionError(401);
+  }
+  return { server, code };
+}
+
+export async function connectHostedStudio(connection: 'desktop' | 'shared', code = '') {
+  const shared = connection === 'shared' ? resolveInvite(code) : null;
+  const endpoint = shared ? `${shared.server}/api/auth/studio/redeem` : DESKTOP_PAIR_URL;
+  const response = await fetch(endpoint, {
+    ...hostedRequestInit(endpoint),
+    method: 'POST',
+    headers: shared ? { 'Content-Type': 'application/json' } : { 'X-Voice-Suite-Pairing': '1' },
+    body: shared ? JSON.stringify({ code: shared.code }) : undefined,
+    signal: AbortSignal.timeout(shared ? 10_000 : 62_000),
+  });
+  const base = await acceptStudioSession(response, (body) => {
+    if (shared) return shared.server;
+    if (typeof body.base_url !== 'string' || !/^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(body.base_url))
+      throw new AuthSessionError();
+    return body.base_url;
+  });
+  saveHostedBackendUrl(base);
+}
+
+export async function verifiedHostedBackend(target: string): Promise<HostedProbe> {
+  const session = getAdminSession(target);
+  if (!session) return { ok: false, kind: 'auth', target };
+  const health = await probeHostedBackend(target);
+  if (!health.ok) return health;
+  try {
+    const response = await fetch(`${target}/api/auth/studio/session`, {
+      ...hostedRequestInit(target),
+      headers: { Authorization: `Bearer ${session.token}` },
+      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+    });
+    // A manually connected older server still supports the existing admin exchange.
+    if (response.status === 404 && session.token.startsWith('ovs_admin_session_')) {
+      const probe = await fetch(`${target}/engines`, {
+        ...hostedRequestInit(target),
+        headers: { Authorization: `Bearer ${session.token}` },
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      });
+      if (probe.ok) return { ...health, authenticated: true };
+    }
+    if (response.status !== 204) {
+      return {
+        ok: false,
+        kind: response.status === 503 ? 'http' : 'auth',
+        status: response.status,
+        target,
+      };
+    }
+    return { ...health, authenticated: true };
+  } catch {
+    return { ok: false, kind: 'network', target };
+  }
 }
 
 interface HealthBody {
@@ -128,9 +218,8 @@ export async function probeHostedBackend(
   let response: Response;
   try {
     response = await fetchImpl(`${target}/health`, {
+      ...hostedRequestInit(target),
       signal: controller.signal,
-      credentials: 'omit',
-      cache: 'no-store',
     });
   } catch {
     return { ok: false, kind: controller.signal.aborted ? 'timeout' : 'network', target };
@@ -174,7 +263,7 @@ export async function probeHostedBackend(
 export const hostedBackendApi = {
   async getConnection() {
     const url = hostedBackendUrl();
-    return { remote: Boolean(url), url, authenticated: false };
+    return { remote: Boolean(url), url, authenticated: Boolean(getAdminSession(url)) };
   },
   testRemote(input: { url: string; apiKey: string }) {
     return probeHostedBackend(input.url, input.apiKey);
@@ -189,6 +278,7 @@ export const hostedBackendApi = {
     return probe;
   },
   async useLocal() {
+    await revokeAdminSession(hostedBackendUrl());
     clearAdminSession();
     clearHostedBackendUrl();
     const url = hostedBackendUrl();

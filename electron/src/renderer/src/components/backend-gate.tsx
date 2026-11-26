@@ -55,15 +55,14 @@ import { cn } from '@/lib/utils';
 import { getBridge, isMac } from './bridge';
 import { ExternalLink } from './external-link';
 import { SetupHelpLinks, SetupUpdateNotice, SetupVersion } from './setup-extras';
-import { HostedBackendBar } from './hosted-backend-bar';
 import { HOSTED_FRONTEND } from '@/lib/hosted-backend';
+import { RELEASES_URL } from '@shared/app-config';
 
 interface BackendGateProps {
   children: ReactNode;
   repairDock?: ReactNode;
 }
 
-const RELEASES_URL = 'https://github.com/debpalash/VoiceStudio/releases/latest';
 const RETRYABLE = new Set(['crashed', 'failed', 'port_in_use']);
 
 type SetupPanel = 'options' | 'troubleshoot';
@@ -179,18 +178,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
       document.getElementById(`setup-panel-${panel}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [panel]);
 
-  // A hosted frontend (Vercel) has no local backend to install or start. The
-  // interface stays browsable with an explicit disconnected indicator; only a
-  // backend that /health confirmed reaches the first-run setup check.
-  if (HOSTED_FRONTEND && !window.voicestudio?.backend) {
-    const reachable = status.stage === 'ready' || busy;
-    return (
-      <div className="contents">
-        {reachable ? <SetupGate>{children}</SetupGate> : children}
-        <HostedBackendBar status={status} />
-      </div>
-    );
-  }
+  if (HOSTED_FRONTEND && !window.voicestudio?.backend) return <>{children}</>;
 
   if (status.stage === 'ready' || busy)
     return (
@@ -514,7 +502,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
           {setup || failed || canTroubleshoot ? (
             <div className="flex flex-wrap items-center gap-2">
               {wrongArchitecture ? (
-                <ExternalLink href={RELEASES_URL} variant="secondary">
+                <ExternalLink href={`${RELEASES_URL}/latest`} variant="secondary">
                   {t('backend.download_apple_silicon')}
                 </ExternalLink>
               ) : null}
@@ -619,7 +607,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
                   <PanelToggle
                     id="options"
                     open={panel === 'options'}
-                    label={t('setup.options')}
+                    label={t('dub.advanced')}
                     onToggle={() => togglePanel('options')}
                   />
                 ) : null}

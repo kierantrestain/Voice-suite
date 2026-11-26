@@ -3,7 +3,7 @@ import { onlineManager } from '@tanstack/react-query';
 import { isBackendReachable } from '@shared/utils/backendStage';
 import { noteBackendStage } from '@/lib/status-polling';
 import { DEFAULT_BACKEND_PORT } from '@shared/app-config';
-import { HOSTED_FRONTEND, hostedBackendUrl, probeHostedBackend } from '@/lib/hosted-backend';
+import { HOSTED_FRONTEND, hostedBackendUrl, verifiedHostedBackend } from '@/lib/hosted-backend';
 
 // Derived from the global `Window.voicestudio` declaration (src/preload/index.d.ts,
 // included by tsconfig.web.json) rather than imported by path: with
@@ -83,13 +83,6 @@ let revision = 0;
 const listeners = new Set<() => void>();
 let bridgeUnsubscribe: (() => void) | null = null;
 let hostedTimer: ReturnType<typeof setTimeout> | null = null;
-/** Extra facts for the hosted connection indicator (version, device, engine). */
-let hostedDetail = '';
-
-export function getHostedBackendDetail(): string {
-  return hostedDetail;
-}
-
 const HOSTED_POLL_READY_MS = 15_000;
 const HOSTED_POLL_DOWN_MS = 5_000;
 
@@ -99,15 +92,15 @@ async function pollHostedBackend(): Promise<void> {
   hostedTimer = null;
   if (!hostedUrl || listeners.size === 0 || hostedInFlight) return;
   hostedInFlight = true;
-  const probe = await probeHostedBackend(hostedUrl).finally(() => {
+  const probe = await verifiedHostedBackend(hostedUrl).finally(() => {
     hostedInFlight = false;
   });
   if (listeners.size === 0) return;
   const starting = !probe.ok && probe.kind === 'http' && probe.status === 503;
-  hostedDetail = probe.ok ? probe.detail : '';
   const stage: BackendStage = probe.ok ? 'ready' : starting ? 'starting' : 'failed';
-  if (stage !== current.stage)
-    publish({ ...current, stage, message: probe.ok ? undefined : probe.kind });
+  const message = probe.ok ? undefined : probe.kind;
+  if (stage !== current.stage || message !== current.message)
+    publish({ ...current, stage, message });
   const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
   hostedTimer = setTimeout(
     () => void pollHostedBackend(),

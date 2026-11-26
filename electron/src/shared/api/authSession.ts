@@ -14,7 +14,9 @@ const ADMIN_SESSION_EPOCH_STORAGE_KEY = 'ov_admin_session_epoch';
 export const CSRF_HEADER_NAME = 'X-VoiceStudio-CSRF';
 
 const ADMIN_SESSION_RE = /^ovs_admin_session_[A-Za-z0-9_-]{43}$/;
-const WS_TICKET_RE = /^ovs_ws_ticket_[A-Za-z0-9_-]{43}$/;
+const STUDIO_SESSION_RE = /^ovs_studio_session_[A-Za-z0-9_-]{43}$/;
+const STORED_SESSION_RE = /^ovs_(?:admin|studio)_session_[A-Za-z0-9_-]{43}$/;
+const WS_TICKET_RE = /^ovs_(?:ws|studio)_ticket_[A-Za-z0-9_-]{43}$/;
 const MAX_AUTH_RESPONSE_BYTES = 16 * 1024;
 const MAX_SESSION_LIFETIME_SECONDS = 9 * 60 * 60;
 const MAX_TICKET_LIFETIME_SECONDS = 60;
@@ -220,7 +222,7 @@ function storedAdminSessionExpired(raw: string | null, nowMs: number): boolean {
   try {
     const parsed = JSON.parse(raw) as Partial<StoredAdminSession>;
     return (
-      ADMIN_SESSION_RE.test(String(parsed.token ?? '')) &&
+      STORED_SESSION_RE.test(String(parsed.token ?? '')) &&
       typeof parsed.expiresAt === 'number' &&
       Number.isFinite(parsed.expiresAt) &&
       parsed.expiresAt <= nowMs / 1000
@@ -259,7 +261,7 @@ export function getAdminSession(
     const parsed = JSON.parse(raw) as Partial<StoredAdminSession>;
     const nowSeconds = now() / 1000;
     if (
-      !ADMIN_SESSION_RE.test(String(parsed.token ?? '')) ||
+      !STORED_SESSION_RE.test(String(parsed.token ?? '')) ||
       typeof parsed.expiresAt !== 'number' ||
       !Number.isFinite(parsed.expiresAt) ||
       parsed.expiresAt <= nowSeconds ||
@@ -361,6 +363,26 @@ function dispatchAuthRequired(windowLike: AuthWindow | undefined): void {
   } catch {
     // Non-browser callers can still handle the typed error.
   }
+}
+
+export async function acceptStudioSession(
+  response: Response,
+  resolveBase: (payload: Record<string, unknown>) => string,
+): Promise<string> {
+  if (response.status !== 201) throw new AuthSessionError(response.status);
+  const payload = await readBoundedObject(response);
+  const token = payload.token;
+  const expiresAt = responseExpiry(payload, Date.now(), 60 * 60);
+  if (typeof token !== 'string' || !STUDIO_SESSION_RE.test(token) || expiresAt === null) {
+    throw new AuthSessionError(response.status);
+  }
+  const apiBase = normalizedApiBase(resolveBase(payload));
+  const storage = defaultAdminSessionStorage();
+  if (!storage) throw new AuthSessionError();
+  storage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify({ token, expiresAt, apiBase }));
+  advanceAdminSessionEpoch(storage);
+  removeLegacyMaster();
+  return apiBase;
 }
 
 export async function exchangeApiKey(

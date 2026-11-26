@@ -475,10 +475,11 @@ def require_native_access(request: Request) -> None:
 
 
 def ws_remote_authorized(websocket) -> bool:
-    """Whether the canonical WS principal has a remote admin credential."""
+    """Whether the canonical WS principal has an explicit stream credential."""
     return principal_for(websocket).kind in {
         PrincipalKind.API_KEY,
         PrincipalKind.ADMIN_SESSION,
+        PrincipalKind.STUDIO_SESSION,
     }
 
 

@@ -933,7 +933,7 @@ export function outdatedSystemLibraryError(
     return Object.assign(
       new Error(
         `${subject} because Windows could not initialise PyTorch's c10.dll (WinError 1114). The cause ` +
-          'is not established: this Windows system\'s Visual C++ runtime ' +
+          "is not established: this Windows system's Visual C++ runtime " +
           `${msvcp?.version ? `(${msvcp.version}) looks current` : 'version could not be read'}. Installing the latest ` +
           'Microsoft Visual C++ Redistributable (x64) and restarting Windows may help; so may updating the ' +
           'graphics driver or pressing Clean & Retry under More fixes. Send the in-app report if it persists.',
@@ -1742,6 +1742,8 @@ export async function installRuntime(
         ]
       : [];
   const syncArgs = ['sync', '--frozen', '--no-dev', ...pythonArgs, ...repairArgs, ...skipArgs];
+  // NVML only serves NVIDIA telemetry. The Mac runtime has no NVIDIA path.
+  if (process.platform === 'darwin') syncArgs.push('--no-install-package', 'nvidia-ml-py');
   const mirror =
     region === 'auto'
       ? await autoPypiMirror(project, signal, downloads)
@@ -1955,6 +1957,16 @@ export async function installRuntime(
     maxRetries: 5,
     retryDelay: 200,
   }).catch(() => undefined);
+  await discardRuntimeInstallFiles(project);
+}
+
+/** The ready interpreter owns its installed files, independently of uv's cache. */
+export async function discardRuntimeInstallFiles(project: string): Promise<void> {
+  await Promise.allSettled(
+    [runtimeUvCache(project), runtimeWheelPrefetchDir(project), join(project, '..', '.tmp')].map(
+      (path) => rm(path, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }),
+    ),
+  );
 }
 
 /** Move caches created by Electron runtime v1 outside the replaceable project. */

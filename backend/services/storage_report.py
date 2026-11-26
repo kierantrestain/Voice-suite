@@ -32,14 +32,13 @@ from pathlib import Path
 
 CACHE_TTL_SECONDS = 300.0
 CATEGORY_TIMEOUT_SECONDS = 10.0
-TOP_MODEL_COUNT = 10
 VOLUME_PRESSURE_PERCENT = 90.0
 DEFAULT_MIN_FREE_GB = 10  # callers pass setup.wizard.MIN_FREE_GB — this is the standalone fallback
 
 # DATA_DIR children we know by name (core.config constants + routers that
 # write there). Anything else lands in the "other" subtotal so the numbers
 # always add up to the real on-disk footprint.
-_DATA_CHILD_DIRS = ("voices", "outputs", "dub_jobs", "batch", "preview")
+_DATA_CHILD_DIRS = ("voices", "outputs", "dub_jobs", "projects", "batch", "preview")
 _DB_PREFIX = "omnivoice.db"          # omnivoice.db + -wal / -shm / -journal
 _LOG_FILES = ("crash_log.txt", "error_journal.jsonl")
 _LOG_PREFIX = "omnivoice.log"        # rolling log + rotations
@@ -115,7 +114,7 @@ def _mount_point(path: str) -> str:
     return p or os.path.abspath(os.sep)
 
 
-def _dir_size(path: str, deadline: float) -> tuple[int, bool, str | None]:
+def _dir_size(path: str, deadline: float, *, allocated: bool = False) -> tuple[int, bool, str | None]:
     """du-style size of ``path``: ``(bytes, complete, first_unreadable_path)``.
 
     Never follows symlinks (lstat + walk default), never raises. Stops early
@@ -128,11 +127,24 @@ def _dir_size(path: str, deadline: float) -> tuple[int, bool, str | None]:
         if err_path is None:
             err_path = getattr(e, "filename", None) or path
 
+    seen: set[tuple[int, int]] = set()
+
+    def file_size(info: os.stat_result) -> int:
+        if not allocated:
+            return info.st_size
+        if info.st_nlink > 1 and not stat.S_ISDIR(info.st_mode):
+            key = (info.st_dev, info.st_ino)
+            if key in seen:
+                return 0
+            seen.add(key)
+        blocks = getattr(info, "st_blocks", None)
+        return info.st_size if blocks is None else blocks * 512
+
     try:
         if not os.path.exists(path):
             return 0, True, None
         if not os.path.isdir(path):
-            return os.lstat(path).st_size, True, None
+            return file_size(os.lstat(path)), True, None
     except OSError:
         return 0, True, path
 
@@ -151,7 +163,7 @@ def _dir_size(path: str, deadline: float) -> tuple[int, bool, str | None]:
                 break
             fp = os.path.join(root, name)
             try:
-                total += os.lstat(fp).st_size
+                total += file_size(os.lstat(fp))
             except OSError:
                 if err_path is None:
                     err_path = fp
@@ -199,6 +211,9 @@ def build_report(
     hf_cache_dir: str,
     engines_dir: str | None = None,
     app_venv: str | None = None,
+    managed_runtime: str | None = None,
+    desktop_app: str | None = None,
+    desktop_profile: str | None = None,
     temp_root: str | None = None,
     min_free_gb: float = DEFAULT_MIN_FREE_GB,
     category_timeout: float = CATEGORY_TIMEOUT_SECONDS,
@@ -277,7 +292,7 @@ def build_report(
         "path": hf_cache_dir,
         "exists": os.path.isdir(hf_cache_dir),
         "bytes": hf_total,
-        "items": models[:TOP_MODEL_COUNT],
+        "items": models,
     }
     _finish("hf_cache", hf_cat, hf_complete, hf_err)
     categories.append(hf_cat)
@@ -418,7 +433,7 @@ def build_report(
         venv_complete = venv_complete and ok
         venv_err = venv_err or err
         venv_items.append({"name": os.path.basename(edir), "bytes": size})
-    if app_venv:
+    if app_venv and not managed_runtime:
         size, ok, err = _dir_size(app_venv, deadline)
         venv_total += size
         venv_complete = venv_complete and ok
@@ -455,8 +470,50 @@ def build_report(
     _finish("temp", tmp_cat, tmp_complete, tmp_err)
     categories.append(tmp_cat)
 
+    def owned_category(
+        category_id: str, path: str, entries: list[tuple[str, str]],
+    ) -> None:
+        deadline = time.monotonic() + category_timeout
+        items = []
+        complete = True
+        err_path = None
+        for name, entry in entries:
+            if not os.path.lexists(entry):
+                continue
+            size, ok, err = _dir_size(entry, deadline, allocated=True)
+            items.append({"name": name, "bytes": size})
+            complete = complete and ok
+            err_path = err_path or err
+        category = {
+            "id": category_id, "path": path, "exists": os.path.isdir(path),
+            "bytes": sum(item["bytes"] for item in items),
+            "items": items,
+        }
+        _finish(category_id, category, complete, err_path)
+        categories.append(category)
+
+    if desktop_app:
+        owned_category("desktop_app", desktop_app, [("Voice Suite", desktop_app)])
+    if managed_runtime:
+        project = os.path.join(managed_runtime, "project")
+        installed = [
+            ("Python", os.path.join(managed_runtime, ".python")),
+            ("Backend", project),
+        ]
+        owned_category("runtime", managed_runtime, installed)
+        owned_category("runtime_cache", managed_runtime, [
+            (name, os.path.join(managed_runtime, name))
+            for name in (".uv-cache", ".wheel-prefetch", ".tmp")
+        ])
+    if desktop_profile:
+        owned_category("workspace_cache", desktop_profile, [
+            (name, os.path.join(desktop_profile, name))
+            for name in ("Cache", "Code Cache", "GPUCache", "IndexedDB")
+        ])
+
     # ── Volumes: group category roots by device, disk_usage once each ──────
     roots = {"hf_cache": hf_cache_dir, "data": data_dir, "engine_venvs": engines_dir, "temp": temp_root}
+    roots.update({cat["id"]: cat["path"] for cat in categories if cat["id"] not in roots})
     by_dev: dict[object, dict] = {}
     for cid, root in roots.items():
         anchor = _existing_ancestor(root)
@@ -526,6 +583,9 @@ def get_report(
     hf_cache_dir: str,
     engines_dir: str | None = None,
     app_venv: str | None = None,
+    managed_runtime: str | None = None,
+    desktop_app: str | None = None,
+    desktop_profile: str | None = None,
     temp_root: str | None = None,
     min_free_gb: float = DEFAULT_MIN_FREE_GB,
     category_timeout: float = CATEGORY_TIMEOUT_SECONDS,
@@ -533,7 +593,10 @@ def get_report(
     ttl: float = CACHE_TTL_SECONDS,
 ) -> dict:
     """Cached ``build_report``. ``refresh=True`` forces a rescan."""
-    key = (data_dir, hf_cache_dir, engines_dir, app_venv, temp_root, min_free_gb)
+    key = (
+        data_dir, hf_cache_dir, engines_dir, app_venv, temp_root, min_free_gb,
+        managed_runtime, desktop_app, desktop_profile,
+    )
     if not refresh:
         with _cache_lock:
             fresh = (
@@ -548,6 +611,9 @@ def get_report(
         hf_cache_dir=hf_cache_dir,
         engines_dir=engines_dir,
         app_venv=app_venv,
+        managed_runtime=managed_runtime,
+        desktop_app=desktop_app,
+        desktop_profile=desktop_profile,
         temp_root=temp_root,
         min_free_gb=min_free_gb,
         category_timeout=category_timeout,

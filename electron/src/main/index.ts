@@ -14,7 +14,17 @@ import { isTrustedRenderer } from './trusted-renderer';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, session, shell, Tray } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  session,
+  shell,
+  Tray,
+} from 'electron';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { BackendSupervisor, backendRoot, setBackendOnlyEnv } from './backend';
 import { DiagnosticReports } from './diagnostics';
@@ -28,6 +38,8 @@ import { runDiagnosticOperation } from './diagnostic-operation';
 import { applySavedTorchVariant } from './torch-choice';
 import { assertTrustedMainFrame, registerIpc, wireWindowMaximizeEvents } from './ipc';
 import { APP_ORIGIN, installAppProtocol, registerAppScheme } from './protocol';
+import { startDesktopPairing } from './desktop-pairing';
+import { DESKTOP_OPEN_URL, HOSTED_STUDIO_ORIGIN } from '../shared/desktop-pairing';
 import { electronProxyPort, startDevBackendProxy } from './dev-backend-proxy';
 import { DesktopUpdater, registerUpdateIpc } from './updater';
 import { scheduleUpdateChecks } from './update-schedule';
@@ -100,6 +112,7 @@ let tray: Tray | null = null;
 // Hidden-to-tray state and pending closes; see WindowUse.
 const windowUse = new WindowUse();
 let closeCapture: (() => void) | null = null;
+let closePairing: (() => void) | null = null;
 let closeDevProxy: (() => Promise<void>) | null = null;
 let closeUpdates: (() => void) | null = null;
 let closeRepairAgents: (() => void) | null = null;
@@ -232,6 +245,8 @@ async function tearDownNativeResources(): Promise<void> {
   closeAccount = null;
   tray?.destroy();
   tray = null;
+  closePairing?.();
+  closePairing = null;
   const proxyTeardown = closeDevProxy?.() ?? Promise.resolve();
   closeDevProxy = null;
   await Promise.allSettled([
@@ -291,14 +306,11 @@ ipcMain.handle('app:set-close-to-tray', (event, enabled: unknown) => {
   return closeToTray;
 });
 
-ipcMain.handle(
-  'app:is-fullscreen',
-  (event) => {
-    const owner = BrowserWindow.fromWebContents(event.sender);
-    assertTrustedMainFrame(event, owner);
-    return owner?.isFullScreen() ?? false;
-  },
-);
+ipcMain.handle('app:is-fullscreen', (event) => {
+  const owner = BrowserWindow.fromWebContents(event.sender);
+  assertTrustedMainFrame(event, owner);
+  return owner?.isFullScreen() ?? false;
+});
 
 function createWindow(): BrowserWindow {
   const appUrl =
@@ -543,6 +555,11 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
     );
   });
   let initialized: Promise<void> = Promise.resolve();
+  app.on('open-url', (event, url) => {
+    if (url !== DESKTOP_OPEN_URL && url !== DESKTOP_OPEN_URL + '/') return;
+    event.preventDefault();
+    void initialized.then(() => showWindow());
+  });
   app.on('second-instance', (_event, argv) => {
     const intent = parseLaunchIntent(argv);
     void initialized.then(() => handleLaunch(intent));
@@ -598,6 +615,36 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
         },
         (work) => runDiagnosticOperation(reports, work),
       );
+      if (app.isPackaged && !headlessOwner) {
+        app.setAsDefaultProtocolClient('voice-suite');
+        const pairing = startDesktopPairing({
+          readyUrl: () =>
+            backend.status.stage === 'ready' && backend.status.managed && !backend.connection.remote
+              ? backend.baseUrl
+              : null,
+          approve: async (signal) => {
+            showWindow();
+            const options = {
+              type: 'question' as const,
+              title: PRODUCT_NAME,
+              message: 'Connect Voice Suite in your browser?',
+              detail: `${HOSTED_STUDIO_ORIGIN} will be able to use this studio, including its voices and generated audio, for one hour.`,
+              buttons: ['Cancel', 'Connect'],
+              defaultId: 0,
+              cancelId: 0,
+              signal,
+            };
+            const owner = mainWindow;
+            const choice =
+              owner && !owner.isDestroyed()
+                ? await dialog.showMessageBox(owner, options)
+                : await dialog.showMessageBox(options);
+            return choice.response === 1;
+          },
+        });
+        setBackendOnlyEnv({ VOICE_SUITE_DESKTOP_PAIR_KEY: pairing.key });
+        closePairing = pairing.close;
+      }
       // Before backend.start(): the backend inherits the token-bridge env.
       closeAccount = await startAccount({
         getMainWindow: () => mainWindow,

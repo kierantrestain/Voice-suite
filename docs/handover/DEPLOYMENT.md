@@ -1,12 +1,13 @@
 # Deployment
 
-Voice Suite deploys as two independent pieces:
-
-1. a **static frontend** on Vercel (no AI runs there), and
-2. an **inference backend** (Python/PyTorch, FastAPI) on hardware you control.
+Vercel serves the Voice Suite interface and routes Cloud requests to external audio
+providers. Free Browser Mode runs small models on the user's device. The optional
+desktop or shared inference backend (Python/PyTorch, FastAPI) runs on hardware you control.
 
 Heavy inference is deliberately not put in Vercel Functions: models are gigabytes,
 need GPUs or long CPU time, and keep state on disk.
+
+[Cloud, Free Browser and desktop pairing](CLOUD.md) describes the three hosted modes, operator configuration and invitation workflow.
 
 ## 1. Vercel frontend
 
@@ -21,7 +22,7 @@ Configuration is committed in [`vercel.json`](../../vercel.json):
 | Output | `frontend/dist` |
 | Headers | `nosniff`, `no-referrer`, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, COOP, `Permissions-Policy` (microphone allowed for dictation/recording) |
 | Caching | `/assets/*` immutable for a year; `index.html` no-cache |
-| Routing | hash routes; non-asset paths rewrite to `index.html` |
+| Routing | hash routes, Vercel Function at `/api/cloud`, non-asset pages use `index.html` |
 
 ### First-time setup (dashboard, about 3 minutes)
 
@@ -47,8 +48,9 @@ vercel deploy --prod        # uses vercel.json
 
 ### Verify a deployment
 
-- Open the URL: the home dashboard renders and a bottom bar says *No inference backend
-  connected*. Refreshing a deep link such as `/#/dub` still works.
+- Open the URL and choose a mode. Free Browser Mode can generate, play and export a
+  WAV and transcribe an English clip. Cloud Mode shows its available providers after sign-in.
+- With a desktop or shared server connection, refreshing a deep link such as `/#/dub` still works.
 - Browser console has no CSP errors.
 
 ## 2. Inference backend
@@ -101,9 +103,7 @@ Pick one:
 
 ### Security checklist
 
-- `OMNIVOICE_API_KEY` is required by both `backend.sh` and the compose file. The browser
-  exchanges it via `POST /api/auth/session` for a short-lived scoped session; the raw key
-  is never stored by the site.
+- `OMNIVOICE_API_KEY` is required by both `backend.sh` and the compose file. Operators use it to create a one-time shared-server invitation. The hosted connection exchanges the invitation for a studio session. The legacy operator connection remains under Advanced.
 - `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` (default in `backend.sh`) prevents same-host
   reverse proxies or tunnels (`nginx proxy_pass`, `ssh -R`) from bypassing API-key
   authentication by arriving as `127.0.0.1`.

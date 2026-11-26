@@ -46,6 +46,7 @@ export interface UseRecording {
 export function useRecording(
   onRecorded: (file: File) => void,
   trackReference = true,
+  { clean = true, maxSeconds = 0 } = {},
 ): UseRecording {
   const onRecordedRef = useRef(onRecorded);
   useEffect(() => {
@@ -153,10 +154,14 @@ export function useRecording(
         toast.error(tr('recording.too_short'));
         return;
       }
+      const filename = `recording.${extension}`;
+      if (!clean) {
+        onRecordedRef.current(new File([blob], filename, { type: blob.type }));
+        return;
+      }
       const generation = lifecycle.current;
       const request = new AbortController();
       cleaningRequest.current = request;
-      const filename = `recording.${extension}`;
       setIsCleaning(true);
       try {
         const clean = await cleanAudio(blob, filename, request.signal);
@@ -172,7 +177,7 @@ export function useRecording(
         if (generation === lifecycle.current) setIsCleaning(false);
       }
     },
-    [clearTimer, stopLevelMonitor, releaseStream],
+    [clean, clearTimer, stopLevelMonitor, releaseStream],
   );
 
   const start = useCallback(async () => {
@@ -224,7 +229,11 @@ export function useRecording(
       setIsRecording(true);
       const startedAt = Date.now();
       timerRef.current = setInterval(() => {
-        setSeconds(Math.round((Date.now() - startedAt) / TIMER_TICK_MS) / 10);
+        const elapsed = (Date.now() - startedAt) / 1000;
+        setSeconds(Math.round(elapsed * 10) / 10);
+        if (maxSeconds > 0 && elapsed >= maxSeconds && started.recorder.state === 'recording') {
+          started.recorder.stop();
+        }
       }, TIMER_TICK_MS);
     } catch (err) {
       if (generation !== lifecycle.current) return;
@@ -244,6 +253,7 @@ export function useRecording(
     releaseStream,
     publishLevel,
     finishRecording,
+    maxSeconds,
   ]);
 
   const stop = useCallback(() => {

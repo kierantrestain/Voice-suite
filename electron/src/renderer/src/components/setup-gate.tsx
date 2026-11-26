@@ -6,6 +6,8 @@ import { apiJson } from '@/lib/api/client';
 import { brandIcon } from '@/lib/brand';
 import { rememberSetupStarted, setupWasCompleted, setupWasStarted } from '@/lib/setup-progress';
 import type { SetupStatus } from './setup-wizard';
+import { getBridge } from './bridge';
+import { useBackendStatus } from '@/hooks/use-backend-status';
 
 // Only a first run renders the wizard, so its settings panels load on demand
 // instead of in every launch's startup bundle (#3924).
@@ -13,8 +15,14 @@ const SetupWizard = lazy(() =>
   import('./setup-wizard').then((module) => ({ default: module.SetupWizard })),
 );
 
+const StudioFirstRun = lazy(() =>
+  import('./studio-first-run').then((module) => ({ default: module.StudioFirstRun })),
+);
+
 export function SetupGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
+  const backend = useBackendStatus();
+  const [advanced, setAdvanced] = useState(false);
   const [needed, setNeeded] = useState<boolean | null>(null);
   const [setupInProgress, setSetupInProgress] = useState(setupWasStarted);
   const status = useQuery({
@@ -34,7 +42,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
     }
     setNeeded(!completed);
   }, [needed, setupInProgress, status.data]);
-  if (needed === false) return <>{children}</>;
+  if (needed === false || backend.remote) return <>{children}</>;
   const loading = (
     <div className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-4">
       <div className="flex items-center gap-2.5">
@@ -47,14 +55,19 @@ export function SetupGate({ children }: { children: ReactNode }) {
     </div>
   );
   if (needed === null) return loading;
+  const finish = () => {
+    setSetupInProgress(false);
+    setNeeded(false);
+  };
+  if (getBridge() && !advanced)
+    return (
+      <Suspense fallback={loading}>
+        <StudioFirstRun onComplete={finish} onAdvanced={() => setAdvanced(true)} />
+      </Suspense>
+    );
   return (
     <Suspense fallback={loading}>
-      <SetupWizard
-        onComplete={() => {
-          setSetupInProgress(false);
-          setNeeded(false);
-        }}
-      />
+      <SetupWizard onComplete={finish} />
     </Suspense>
   );
 }

@@ -1378,6 +1378,9 @@ async def get_storage_report(refresh: bool = Query(False)):
             data_dir=DATA_DIR,
             hf_cache_dir=_effective_models_dir(),
             app_venv=storage_report.default_app_venv(),
+            managed_runtime=os.environ.get("VOICE_SUITE_RUNTIME_ROOT"),
+            desktop_app=os.environ.get("VOICE_SUITE_APP_ROOT"),
+            desktop_profile=os.environ.get("VOICE_SUITE_PROFILE_ROOT"),
             min_free_gb=MIN_FREE_GB,
             refresh=refresh,
         )

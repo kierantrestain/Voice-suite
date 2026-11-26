@@ -26,7 +26,9 @@ export function hostedCsp(html: string): string {
   return html.replace(/content="default-src 'self';[^"]*"/, () => {
     const policy = [
       "default-src 'self'",
-      "script-src 'self'",
+      // Transformers.js uses this pinned ONNX runtime loader if the bundled
+      // worker cannot infer its URL. Allow WebAssembly without JS eval.
+      "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*",
       "media-src 'self' blob: data: https: http://localhost:* http://127.0.0.1:*",

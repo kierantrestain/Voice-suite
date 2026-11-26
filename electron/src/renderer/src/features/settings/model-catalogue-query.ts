@@ -36,6 +36,7 @@ export interface CatalogueModel {
 }
 
 export interface ModelCatalogueResponse {
+  platform_tags?: string[];
   models: CatalogueModel[];
   total_installed_bytes?: number;
   disk_free_gb?: number;

@@ -48,6 +48,9 @@ ALLOWLIST: dict[str, str] = {
     # ── Credential bootstrap ─────────────────────────────────────────────
     # These three mint or revoke the credential a gate would check, so they
     # authorize in-body instead of through Depends.
+    "POST /api/auth/studio/desktop": "Loopback + process-private Electron key after user approval.",
+    "POST /api/auth/studio/invite": "Only the authenticated operator master header can issue an invite.",
+    "POST /api/auth/studio/redeem": "Valid, unexpired one-use invite and verified browser origin.",
     "POST /api/auth/session": (
         "Credential exchange: validates the master API key (or legacy cookie + CSRF) "
         "in-body before minting ov_session; a Depends credential gate would be circular."

@@ -24,6 +24,7 @@
     "src/main/**/*",
     "src/preload/**/*",
     "src/shared/web-api-routing.ts",
+    "src/shared/desktop-pairing.ts",
     "src/shared/repair-request.ts",
     "src/shared/download-failure.ts",
     "src/shared/utils/backendOutput.ts",

@@ -6,12 +6,13 @@ import { absoluteApiBase, ApiError, apiFetch } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { HOSTED_FRONTEND } from '@/lib/hosted-backend';
 
 type AuthMode = 'apikey' | 'pin';
 
 export function WebAuthGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const [checked, setChecked] = useState(!__WEB_DEPLOYMENT__);
+  const [checked, setChecked] = useState(!__WEB_DEPLOYMENT__ || HOSTED_FRONTEND);
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [value, setValue] = useState('');
   const [pending, setPending] = useState(false);
@@ -20,7 +21,7 @@ export function WebAuthGate({ children }: { children: ReactNode }) {
   const submitting = useRef(false);
 
   useEffect(() => {
-    if (!__WEB_DEPLOYMENT__) return;
+    if (!__WEB_DEPLOYMENT__ || HOSTED_FRONTEND) return;
     const required = (event: Event) => {
       const detail = (event as CustomEvent<{ mode?: string; retryAfter?: number }>).detail;
       setMode(detail?.mode === 'apikey' ? 'apikey' : 'pin');
