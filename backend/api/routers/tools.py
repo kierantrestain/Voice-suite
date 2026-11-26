@@ -18,6 +18,7 @@ existing dub helpers and land in follow-up passes.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -32,7 +33,7 @@ from pydantic import BaseModel, Field
 from services import director, speech_rate, incremental
 from services.ffmpeg_utils import find_ffprobe, spawn_subprocess
 from api.dependencies import require_admin, require_native_access
-from core.path_security import UnsafePath, resolve_within
+from core.path_security import UnsafePath, resolve_within, upload_suffix
 
 logger = logging.getLogger("omnivoice.tools")
 router = APIRouter()
@@ -415,7 +416,7 @@ async def analyze_workflow_audio_quality(
         raise HTTPException(status_code=422, detail="Empty audio upload.")
 
     def _run() -> dict:
-        suffix = os.path.splitext(audio.filename or "audio.wav")[1].lower()
+        suffix = (upload_suffix(audio.filename, default=".wav") or ".wav").lower()
         if suffix not in {".wav", ".flac", ".ogg", ".aiff", ".aif"}:
             suffix = ".wav"
         fd, tmp_path = tempfile.mkstemp(prefix="vs-qc-", suffix=suffix)
@@ -437,16 +438,12 @@ async def analyze_workflow_audio_quality(
                     )
                     report = analyze_audio(wav_path)
                 finally:
-                    try:
+                    with contextlib.suppress(OSError):
                         os.unlink(wav_path)
-                    except OSError:
-                        pass
             return report.model_dump()
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp_path)
-            except OSError:
-                pass
 
     try:
         return await run_in_threadpool(_run)

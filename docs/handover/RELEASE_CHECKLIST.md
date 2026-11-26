@@ -61,7 +61,7 @@ verified 2026-11-26.
 |---|---|---|
 | Updater points at `kierantrestain/Voice-suite` releases; no upstream prompts | ✅ | `config/app.json`, `updater.ts` (70 tests), unsigned macOS redirects to GitHub Releases |
 | Release workflow & artifact manifest work in this repository | ✅ | Fixed `create_store_artifact_manifest.mjs` & `scripts/release.py` for `Voice-Suite-` prefix |
-| macOS arm64 + x64, Windows x64, Linux x64 packages | ⏳ | Rehearsal run `45853022562` building all 5 legs (unsigned dev builds — signing secrets not configured) |
+| macOS arm64 + x64, Windows x64, Linux x64 packages | ✅ | Rehearsal run `45853022562` passed 100% across all 5 desktop legs (`macos-15` arm64, `macos-15-intel` x64, `windows-2022` x64, `windows-11-arm` arm64, `ubuntu-22.04` x64) + packaged startup smoke tests + release feed/checksum validation (unsigned dev builds — signing secrets not configured) |
 | AGPL notices and upstream credit preserved | ✅ | `LICENSE`, `LICENSE-NOTICE.md`, `test_voice_suite_release_validation.py` |
 
 ## 6. Security and privacy

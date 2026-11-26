@@ -35,6 +35,7 @@ GET /api/mcp/bindings
 GET /api/settings/analytics
 GET /api/settings/asr-openai-compat
 GET /api/settings/changelog
+GET /api/settings/commercial-mode
 GET /api/settings/compute-device
 GET /api/settings/cuda-device
 GET /api/settings/db-backup
@@ -338,6 +339,7 @@ POST /system/shutdown-intent
 POST /system/tailscale/disable
 POST /system/tailscale/enable
 POST /tasks/cancel/{task_id}
+POST /tools/analyze-quality
 POST /tools/direction
 POST /tools/finish-audio
 POST /tools/incremental
@@ -358,6 +360,7 @@ PUT /api/integrations/twilio/config
 PUT /api/mcp/bindings
 PUT /api/settings/analytics
 PUT /api/settings/asr-openai-compat
+PUT /api/settings/commercial-mode
 PUT /api/settings/compute-device
 PUT /api/settings/cuda-device
 PUT /api/settings/diagnostics

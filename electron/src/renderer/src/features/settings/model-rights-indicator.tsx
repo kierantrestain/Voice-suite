@@ -182,23 +182,22 @@ export function useCommercialProductionMode(): [boolean, (next: boolean) => void
     setEnabled(next);
     writeCommercialModeCache(next);
     try {
-      const req = apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: next }),
-      });
-      if (req && typeof req.then === 'function') {
-        void req
-          .then((res) => {
-            if (typeof res?.enabled === 'boolean' && res.enabled !== next) {
-              setEnabled(res.enabled);
-              writeCommercialModeCache(res.enabled);
-            }
-          })
-          .catch(() => {
-            // Offline / env-locked errors keep local state until reconnected.
-          });
-      }
+      void Promise.resolve(
+        apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next }),
+        }),
+      )
+        .then((res) => {
+          if (typeof res?.enabled === 'boolean' && res.enabled !== next) {
+            setEnabled(res.enabled);
+            writeCommercialModeCache(res.enabled);
+          }
+        })
+        .catch(() => {
+          // Offline / env-locked errors keep local state until reconnected.
+        });
     } catch {
       // Offline / test environments without fetch keep local state cleanly.
     }

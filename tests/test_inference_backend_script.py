@@ -39,7 +39,7 @@ def _run(home, *args, check=True):
 
 
 def _settings(home):
-    text = (home / "vsb" / "backend.env").read_text()
+    text = (home / "vsb" / "backend.env").read_text(encoding="utf-8")
     return dict(line.split("=", 1) for line in text.splitlines() if line and not line.startswith("#"))
 
 
@@ -88,7 +88,7 @@ def test_commands_before_setup_point_to_install(tmp_path):
 def test_a_stale_pid_file_is_removed_and_reported_stopped(tmp_path):
     _run(tmp_path, "setup", "--origin", "https://a.vercel.app", "--port", "19")
     pidfile = tmp_path / "vsb" / "backend.pid"
-    pidfile.write_text("1\n")  # a live process that is not this backend
+    pidfile.write_text("1\n", encoding="utf-8")  # a live process that is not this backend
     result = _run(tmp_path, "status", check=False)
     assert result.returncode == 3
     assert "Stopped." in result.stdout
@@ -98,6 +98,6 @@ def test_a_stale_pid_file_is_removed_and_reported_stopped(tmp_path):
 
 def test_compose_needs_no_domain_unless_the_https_profile_runs():
     """`${VAR:?}` is interpolated for every profile, so it broke plain `up`."""
-    text = COMPOSE.read_text()
+    text = COMPOSE.read_text(encoding="utf-8")
     assert "VOICE_SUITE_BACKEND_DOMAIN:?" not in text
     assert '"127.0.0.1:${VOICE_SUITE_BACKEND_PORT:-3900}:3900"' in text

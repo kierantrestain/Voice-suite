@@ -40,6 +40,13 @@ _cache: tuple[float, dict] | None = None
 _TRUTHY_ENV = frozenset({"1", "true", "yes", "on"})
 
 
+def _settings_store():
+    """Late-bind settings_store to avoid a static import cycle with core.failure."""
+    import importlib
+
+    return importlib.import_module("services.settings_store")
+
+
 def commercial_mode_locked() -> bool:
     """True when the server operator locked commercial-only mode via env."""
     import os
@@ -51,10 +58,8 @@ def is_commercial_mode() -> bool:
     """True when restricted/non-commercial models must be blocked for commercial production."""
     if commercial_mode_locked():
         return True
-    from services import settings_store
-
     try:
-        return (settings_store.get_text(_COMMERCIAL_MODE_KEY) or "").strip().lower() in _TRUTHY_ENV
+        return (_settings_store().get_text(_COMMERCIAL_MODE_KEY) or "").strip().lower() in _TRUTHY_ENV
     except Exception:  # noqa: BLE001 — unreadable settings fall back to off unless env-locked
         return False
 
@@ -70,9 +75,7 @@ def set_commercial_mode(enabled: bool) -> dict:
         raise PermissionError(
             f"Commercial Production Guard is locked on by {COMMERCIAL_MODE_ENV}=1."
         )
-    from services import settings_store
-
-    settings_store.set_text(_COMMERCIAL_MODE_KEY, "1" if enabled else "0")
+    _settings_store().set_text(_COMMERCIAL_MODE_KEY, "1" if enabled else "0")
     return commercial_mode_status()
 
 
