@@ -169,21 +169,10 @@ export function useCommercialProductionMode(): [boolean, (next: boolean) => void
   const [enabled, setEnabled] = useState<boolean>(() => readCommercialMode());
 
   useEffect(() => {
-    let active = true;
     const sync = () => setEnabled(readCommercialMode());
     window.addEventListener(COMMERCIAL_MODE_EVENT, sync);
     window.addEventListener('storage', sync);
-    void apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode')
-      .then((res) => {
-        if (!active || typeof res?.enabled !== 'boolean') return;
-        setEnabled(res.enabled);
-        writeCommercialModeCache(res.enabled);
-      })
-      .catch(() => {
-        // Offline / disconnected hosted mode keeps local preference.
-      });
     return () => {
-      active = false;
       window.removeEventListener(COMMERCIAL_MODE_EVENT, sync);
       window.removeEventListener('storage', sync);
     };
@@ -192,20 +181,27 @@ export function useCommercialProductionMode(): [boolean, (next: boolean) => void
   const update = (next: boolean) => {
     setEnabled(next);
     writeCommercialModeCache(next);
-    void apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: next }),
-    })
-      .then((res) => {
-        if (typeof res?.enabled === 'boolean' && res.enabled !== next) {
-          setEnabled(res.enabled);
-          writeCommercialModeCache(res.enabled);
-        }
-      })
-      .catch(() => {
-        // Offline / env-locked errors are reconciled on the next read.
+    try {
+      const req = apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
       });
+      if (req && typeof req.then === 'function') {
+        void req
+          .then((res) => {
+            if (typeof res?.enabled === 'boolean' && res.enabled !== next) {
+              setEnabled(res.enabled);
+              writeCommercialModeCache(res.enabled);
+            }
+          })
+          .catch(() => {
+            // Offline / env-locked errors keep local state until reconnected.
+          });
+      }
+    } catch {
+      // Offline / test environments without fetch keep local state cleanly.
+    }
   };
 
   return [enabled, update];
