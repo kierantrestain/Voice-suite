@@ -1617,8 +1617,10 @@ async def lifespan(app: FastAPI):
     # write. The short wait covers a restart whose predecessor is still exiting.
     with DataDirectoryLease(DATA_DIR, timeout=15):
         from api.dependencies import validate_server_admin_key
+        from core.auth import validate_loopback_policy
 
         validate_server_admin_key()
+        validate_loopback_policy()
         async with _diagnostic_lifespan():
             application_started = False
             try:
@@ -2309,6 +2311,11 @@ app.add_middleware(BackendMarkerMiddleware)
 # No responses or network work: snapshot before any request middleware awaits.
 # The private ASGI scope value also outlives this middleware's exception unwind.
 app.add_middleware(DiagnosticRequestAuthorityMiddleware)
+# Outermost: with OMNIVOICE_LOOPBACK_REQUIRES_KEY=1 (the native headless
+# scripts' default) a loopback peer may be a same-host reverse proxy or tunnel,
+# so every layer above must see it as an unknown remote peer.
+from core.auth import UntrustedLoopbackMiddleware
+app.add_middleware(UntrustedLoopbackMiddleware)
 
 # Register canonical audio MIME types before any StaticFiles mount.
 # Python's `mimetypes.guess_type()` returns `audio/x-wav` for `.wav` and

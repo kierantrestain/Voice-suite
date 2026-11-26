@@ -30,7 +30,9 @@ explicitly because it cannot infer it from FastAPI dependencies. The HTTP-only
 share PIN does not authorize a socket; the WebSocket policy is detailed below.
 
 Loopback traffic (`127.0.0.1`, `::1`, `localhost`) is **never** gated — local
-tools keep working unchanged whichever gate is set.
+tools keep working unchanged whichever gate is set — unless
+`OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` is set for a backend behind a same-host
+proxy or tunnel ([below](#same-host-reverse-proxy-or-tunnel)).
 
 > VoiceStudio separates **consumption** (TTS, dictation, voices) from
 > **administration** (`/system/*`, `/api/settings/*` — RCE-class). The PIN and
@@ -310,6 +312,23 @@ main port (not the LAN-share listener), and forwarded headers are never read
 for it. It grants the PIN's consumption rights only: the API-key gate and admin
 routes are unaffected. Default off. Risks and setup:
 [Docker install](install/docker.md#trust-host-loopback).
+
+### Same-host reverse proxy or tunnel
+
+A reverse proxy or tunnel on the backend's own machine makes internet clients
+connect from `127.0.0.1`. Uvicorn restores the real client address only when
+the proxy sends `X-Forwarded-For` (Caddy does by default; check yours).
+One that sends none — nginx's default `proxy_pass`, a raw TCP forward, `ssh -R`
+— would hand every visitor the loopback tier: admin and host-path access with
+no credential. `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` closes that: loopback peers
+are treated as unknown remote clients, so everything except the public shell
+paths and `/health` needs the API key or a session, including from the machine
+itself (scripts send `Authorization: Bearer <key>`). Host-path (native)
+capabilities and managed sidecar installs become unavailable over HTTP. Use it
+with `OMNIVOICE_SERVER_MODE=1` so the key can reach admin routes; the backend
+refuses to start with it set and no `OMNIVOICE_API_KEY`. The native headless
+scripts (`deploy/inference-backend/backend.sh`) set both by default. Docker
+does not need it: the container never sees the host's loopback.
 
 ---
 
