@@ -1,5 +1,5 @@
 import { _electron as electron } from 'playwright';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -383,19 +383,29 @@ try {
       await audio.evaluate((element) => element.play());
       await window.waitForFunction(() => document.querySelector('audio')?.currentTime > 0.25);
       await audio.evaluate((element) => element.pause());
-      const storage = await window.evaluate(async () => {
-        const response = await fetch('/api/settings/storage');
-        if (!response.ok) throw new Error('Could not measure first-run storage');
-        const { categories } = await response.json();
-        return categories.map(({ id, bytes }) => ({ id, bytes }));
-      });
-      await activate(window.getByRole('button', { name: 'Enter studio', exact: true }));
-      await window.getByRole('heading', { name: 'Home', exact: true }).waitFor();
+      const reportDir = process.env.VOICESTUDIO_FIRST_SOUND_REPORT_DIR;
+      if (reportDir) {
+        const wave = await audio.evaluate(async (element) =>
+          Array.from(new Uint8Array(await (await fetch(element.src)).arrayBuffer())),
+        );
+        mkdirSync(reportDir, { recursive: true });
+        writeFileSync(join(reportDir, 'first-sound.wav'), Buffer.from(wave));
+      }
       console.log('PASS: first-run KittenTTS produced and played a 24-bit WAV', {
         size: proof.size,
         elapsedMs,
-        storage,
       });
+      const storage = await window.evaluate(async () => {
+        const response = await fetch('/api/api/settings/storage?refresh=1');
+        if (!response.ok) throw new Error('Storage report returned ' + response.status);
+        const { categories } = await response.json();
+        return categories.map(({ id, bytes }) => ({ id, bytes }));
+      });
+      assert(storage.some(({ id, bytes }) => id === 'runtime' && bytes > 0));
+      if (reportDir) writeFileSync(join(reportDir, 'storage.json'), JSON.stringify(storage, null, 2));
+      await activate(window.getByRole('button', { name: 'Enter studio', exact: true }));
+      await window.getByRole('heading', { name: 'Home', exact: true }).waitFor();
+      console.log('PASS: entered the studio with measured storage', storage);
     }
     if (!firstSound) {
       await window.getByText('VoiceStudio', { exact: true }).first().waitFor({ timeout: 120_000 });
