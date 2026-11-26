@@ -49,6 +49,8 @@ services:
       - OMNIVOICE_ALLOWED_ORIGINS=${OMNIVOICE_ALLOWED_ORIGINS:?set OMNIVOICE_ALLOWED_ORIGINS to the Vercel origin in .env}
       # Opt-in analytics and failure reports stay off unless a user enables them.
       - OMNIVOICE_ANALYTICS_DISABLED=${OMNIVOICE_ANALYTICS_DISABLED:-1}
+      # Set to 1 to lock Commercial Production Guard on (blocks CC-BY-NC/unverified weights).
+      - OMNIVOICE_COMMERCIAL_ONLY=${OMNIVOICE_COMMERCIAL_ONLY:-0}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
       interval: 30s

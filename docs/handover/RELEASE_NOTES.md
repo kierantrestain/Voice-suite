@@ -1,46 +1,49 @@
-# Release notes — Voice Suite (based on VoiceStudio 0.5.9-beta.8)
+# Release notes — Voice Suite v0.6.0
 
-Version string: `0.5.9-beta.8` (unchanged from the upstream base; bump only in the three
-lockstep places — root `package.json`, `pyproject.toml`, `backend/core/version.py`).
+Version string: `0.6.0` (in lockstep across root `package.json`, `pyproject.toml`,
+`backend/core/version.py`, and `uv.lock`). Derived from upstream VoiceStudio
+`v0.5.9-beta.8` (AGPL-3.0).
 
 **Highlights**
 
-- Hosted web app: the full studio interface on Vercel, connected to an inference backend you run
-- Production audio: 24-bit/48 kHz WAV and lossless FLAC, trim with fades, silence removal, high-pass and normalisation
-- Clear model rights: every engine shows whether its weights allow commercial use
-- Explicit consent before saving a cloned voice
-- Voice Suite identity, dark studio theme and a 10-workspace dashboard
+- **Independent Voice Suite v0.6.0 distribution:** dedicated `io.github.kierantrestain.voicesuite`
+  application identity, independent GitHub Releases & auto-updater on
+  `kierantrestain/Voice-suite` (no upstream update prompts), and GHCR container publishing
+- **Backend-enforced Commercial Production Guard:** `OMNIVOICE_COMMERCIAL_ONLY=1` and
+  `/api/settings/commercial-mode` block CC-BY-NC and unverified weights with HTTP 403
+  (`commercial_guard_blocked`), preventing accidental commercial use even after personal acceptance
+- **Verified commercial CPU voice cloning:** MOSS-TTS-Nano (Apache-2.0, 100M, 20 languages,
+  48 kHz native) verified end-to-end alongside KittenTTS (Apache-2.0), faster-whisper (MIT),
+  WhisperX forced alignment, AudioSeal provenance, and `HF_HUB_OFFLINE=1` offline operation
+- **Production backend operations & proxy security:** `deploy/inference-backend/backend.sh`
+  (`install/setup/start/stop/restart/status/logs/key`, `--commercial-only`) with
+  `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` preventing same-host reverse-proxy auth bypass
+- **Memory & audio quality hardening:** single-residency TTS eviction across generate/dub/batch/audiobook,
+  idle in-process TTS engine unloading, low-RAM unified-memory ASR offloading, dictation cleanup,
+  and `POST /tools/analyze-quality` audio QC metrics
 
 ### Added
 
-- Hosted frontend build (`VOICE_SUITE_HOSTED=1`, `vercel.json`) with configurable backend URL, `/health` status polling, API-key → scoped-session sign-in and a labelled disconnected state.
-- Inference backend deployment (`deploy/inference-backend/`): Docker Compose from source, required API key and origin allow-list, NVIDIA override, optional Caddy HTTPS.
-- Production exports: 24-bit/48 kHz WAV and FLAC alongside WAV and MP3.
-- Audio tools: waveform trim with edge fades, silence trimming, high-pass filter, peak normalisation and a one-step finish chain.
-- Model rights indicators (commercial / conditions / unknown / non-commercial) separating app licence from model licence.
-- Cloning consent attestation and provenance notices.
-- Voice favourites in the voice library.
-- Apple Silicon Metal/MPS diagnostics and CPU-fallback explanations.
-- Release validation test suite (`tests/test_voice_suite_release_validation.py`) and hosted-backend tests.
-- Maintainer handover documentation (`docs/handover/`), `.env.example` files.
+- Backend-enforced Commercial Production Guard (`GET/PUT /api/settings/commercial-mode`, `OMNIVOICE_COMMERCIAL_ONLY=1`, `--commercial-only` flag in `backend.sh`).
+- Native inference backend lifecycle manager (`deploy/inference-backend/backend.sh`) and `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` outermost ASGI middleware (`UntrustedLoopbackMiddleware`).
+- Audio quality summary metrics (`peak_dbfs`, `rms_dbfs`, `dc_offset`, `clipped_samples`, `silence_ratio`) and `POST /tools/analyze-quality` endpoint.
+- Hosted Vercel frontend (`https://voice-suite.vercel.app`) with Vercel Authentication, scoped session exchange, live `/health` status, and labelled disconnected state.
+- 24-bit/48 kHz WAV & FLAC exports, waveform trim/fades, finishing chain, explicit cloning consent attestation, and voice favourites.
 
 ### Changed
 
-- Product identity, icons, logo, theme and home dashboard rebranded to Voice Suite.
-- User-facing text says "Voice Suite" in all 22 languages; upstream service names (VoiceStudio Pro, Cloud, account) are kept where they refer to upstream services.
-- In-app repository, documentation, issue and security links point to this repository; the GitHub star badge counts this repository and shows no bundled upstream figure.
-- README: *Get Voice Suite* section (hosted app, backend, source), upstream installers labelled as upstream; same in the 19 translated READMEs.
-- Pro/Support pages: no paid upsell; everything is free.
+- Desktop installers (`Voice-Suite-0.6.0-*`), auto-updater feeds, application ID (`io.github.kierantrestain.voicesuite`), and Docker GHCR publishing target `kierantrestain/Voice-suite`.
+- Performance profiles skip non-commercial NLLB-200 translation in favour of commercial-friendly Argos when Commercial Production Guard is enabled.
 
 ### Fixed
 
-- Saving a hosted backend no longer discards the session just created from the API key.
-- macOS/Windows installer packaging contract checks and Electron renderer smoke selectors after the rebrand.
+- Same-host reverse proxy / tunnel requests arriving from `127.0.0.1` can no longer bypass API-key authentication when `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` is set.
+- `classifyModelRights` now trusts authoritative `model_licenses.json` categories, fixing false non-commercial badges on Apache-2.0 engines (CosyVoice, MOSS-TTS-Nano, VoxCPM2).
+- Wired dead `tts_backend.release_idle_engines()` into `model_manager.idle_worker()`, enforced single-residency eviction in `resolve_generation_backend()` and `audiobook.py`, extended unified-memory ASR offload to non-OmniVoice engines, and added `.unload()` to dictation reset.
+- Fixed `scripts/create_store_artifact_manifest.mjs` and `scripts/release.py` to match the `Voice-Suite-` artifact prefix across all desktop platforms.
 
-### License
+### License & Attribution
 
-- AGPL-3.0 retained; `LICENSE-NOTICE.md` and README credit VoiceStudio (Palash Debnath) and OmniVoice (k2-fsa). OmniVoice weights are labelled non-commercial.
-
-### CI
-
-- Mobile (Android/iOS) checks are not Voice Suite release gates; desktop, Python, Electron, crawler, install, CodeQL, gitleaks and bandit checks remain required.
+- Application code: GNU AGPL-3.0-only (`LICENSE`, `LICENSE-NOTICE.md`), crediting
+  VoiceStudio (Palash Debnath) and OmniVoice (k2-fsa). Model weights remain governed by
+  their own upstream licences.

@@ -18,14 +18,20 @@ after the data changes (command in [MAINTENANCE.md](MAINTENANCE.md)).
 
 | Capability | Engine / model | Licence | Hardware | Result |
 |---|---|---|---|---|
-| Text-to-speech (preset voices, English) | KittenTTS · `KittenML/kitten-tts-mini-0.8` (ONNX) | Apache-2.0 | 4 vCPU x86-64, 15.7 GB RAM, no GPU | 8.82 s of 24 kHz speech in 9.6 s on first run (includes download and load); 5.6 s in 6.4 s warm |
-| Transcription | faster-whisper · `Systran/faster-whisper-base` | MIT | same | 8.5 s of audio in 2.8 s; transcript matched the script except the model name |
-| Provenance watermark | AudioSeal detector/generator | MIT (code) / model card | same | Detected with confidence 1.0 in WAV, FLAC and MP3 outputs |
+| Text-to-speech (preset voices, English) | KittenTTS · `KittenML/kitten-tts-mini-0.8` (ONNX) | Apache-2.0 | 2 vCPU x86-64, 7.8 GB RAM, no GPU | 8.26 s in 15.39 s cold; 8.17 s in 13.70 s warm (**RTF 1.68**); RSS 1.16 GB; 0 clipped samples; works with `HF_HUB_OFFLINE=1` |
+| Zero-shot voice cloning (20 langs, 48 kHz) | MOSS-TTS-Nano · `OpenMOSS-Team/MOSS-TTS-Nano` | Apache-2.0 | 2 vCPU x86-64, 7.8 GB RAM, no GPU | 6.08 s in 27.74 s cold; 6.80 s in 16.11 s warm (**RTF 2.37**); RSS 1.55 GB; peak −4.93 dBFS; 0 clipped; 0% WER transcript |
+| Transcription | faster-whisper · `Systran/faster-whisper-base` (int8) | MIT | 2 vCPU x86-64, 7.8 GB RAM, no GPU | 8.26 s of audio in 5.32 s (**RTF 0.64**); 0% WER; works with `HF_HUB_OFFLINE=1` |
+| Dubbing forced alignment | WhisperX + `wav2vec2_fairseq_base_ls960` | MIT | 2 vCPU x86-64, 7.8 GB RAM, no GPU | Verified on real MP4 upload → 2 timed segments → SRT/VTT export |
+| Provenance watermark | AudioSeal generator + detector (16-bit) | MIT (code) | 2 vCPU x86-64, 7.8 GB RAM, no GPU | Confidence 1.0 on raw WAV, finished WAV, 24-bit/48 kHz WAV, FLAC, and MOSS-TTS-Nano 48 kHz clone; 0.992 on MP3 |
 
-Not run in this session: OmniVoice (2.4 GB, non-commercial), cloning-capable engines,
-GPU (CUDA/ROCm) and Apple Silicon (MPS) paths. Upstream CI and the engine acceptance
-suite (`docs/engine-acceptance.md`) cover those; see
-[KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
+Commercial Production Guard (`OMNIVOICE_COMMERCIAL_ONLY=1` / `/api/settings/commercial-mode`)
+blocks `noncommercial` (including `k2-fsa/OmniVoice`, `Serveurperso/OmniVoice-GGUF`,
+`facebook/nllb-200-distilled-600M`) and `unknown` models at the backend chokepoint
+(`model_acceptance.ensure_accepted`) with HTTP 403 (`commercial_guard_blocked`), even if
+previously accepted for personal use.
+
+Not benchmarked on physical GPU/Apple Silicon hardware here: NVIDIA CUDA, AMD ROCm, and
+Apple Silicon MPS/MLX paths. See [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
 
 ## Hardware guidance
 
