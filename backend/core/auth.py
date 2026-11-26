@@ -201,6 +201,63 @@ def is_trusted_host_loopback(connection) -> bool:
     return not _arrived_on_share_listener(connection)
 
 
+# Native headless deployments (deploy/inference-backend/backend.sh) often sit
+# behind a reverse proxy or tunnel on the same machine. A proxy that forwards
+# no client address (nginx's default proxy_pass, a raw TCP tunnel, ssh -R)
+# makes every internet request arrive from 127.0.0.1, which would otherwise
+# carry the full loopback tier (admin and native) with no credential.
+LOOPBACK_REQUIRES_KEY_ENV = "OMNIVOICE_LOOPBACK_REQUIRES_KEY"
+
+
+def loopback_requires_key() -> bool:
+    """Whether a loopback socket peer must authenticate like any remote peer."""
+    return _env_truthy(LOOPBACK_REQUIRES_KEY_ENV)
+
+
+def validate_loopback_policy() -> None:
+    """Refuse to start when loopback is distrusted but no key can admit anyone."""
+    if loopback_requires_key() and not remote_api_key():
+        raise RuntimeError(
+            f"{LOOPBACK_REQUIRES_KEY_ENV}=1 needs OMNIVOICE_API_KEY: without a key "
+            "no client, local or remote, could authenticate"
+        )
+
+
+def _is_loopback_address(host: object) -> bool:
+    if host == "localhost":
+        return True
+    try:
+        address = ipaddress.ip_address(str(host))
+    except ValueError:
+        return False
+    if getattr(address, "ipv4_mapped", None):
+        address = address.ipv4_mapped
+    return address.is_loopback
+
+
+class UntrustedLoopbackMiddleware:
+    """Outermost ASGI layer for ``OMNIVOICE_LOOPBACK_REQUIRES_KEY=1``.
+
+    A loopback socket peer is replaced by an unknown peer (``client=None``) for
+    everything inside, so every gate (principal, admin, native, WebSocket,
+    share PIN, host check) treats it exactly like an anonymous remote client:
+    it needs the API key or a session. Uvicorn's proxy-header rewrite runs
+    before this, so a proxy that does forward the client address keeps the
+    real remote address. The server's own scope is copied, never mutated, so
+    access logs still show the socket peer.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") in ("http", "websocket") and loopback_requires_key():
+            client = scope.get("client")
+            if client and _is_loopback_address(client[0]):
+                scope = {**scope, "client": None}
+        return await self.app(scope, receive, send)
+
+
 def is_local_host(host: str | None) -> bool:
     if is_loopback(host):
         return True
