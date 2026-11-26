@@ -104,7 +104,10 @@ def hermetic_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 def test_rebranding_app_and_store_metadata_declare_voice_suite() -> None:
     app_cfg = json.loads((ROOT / "config/app.json").read_text(encoding="utf-8"))
     assert app_cfg["productName"] == "Voice Suite"
-    assert app_cfg["appId"] == "com.voicestudio.desktop"
+    # Its own bundle id: sharing upstream's com.voicestudio.desktop made the
+    # Windows installer treat VoiceStudio as an older Voice Suite to uninstall.
+    assert app_cfg["appId"] == "io.github.kierantrestain.voicesuite"
+    assert app_cfg["releaseRepository"] == "kierantrestain/Voice-suite"
 
     store_meta = json.loads((ROOT / "store/metadata.json").read_text(encoding="utf-8"))
     assert store_meta["identity"]["productName"] == "Voice Suite"

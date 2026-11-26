@@ -148,8 +148,10 @@ def test_compatibility_identifiers_stay_stable() -> None:
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     assert package["name"] == "omnivoice-studio-monorepo"
     assert 'name = "omnivoice"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    # The bundle id is Voice Suite's own (not upstream's com.voicestudio.desktop);
+    # no user data is located by it (tests/test_identity_paths_survive_the_rename.py).
     app_config = json.loads((ROOT / "config/app.json").read_text(encoding="utf-8"))
-    assert app_config["appId"] == "com.voicestudio.desktop"
+    assert app_config["appId"] == "io.github.kierantrestain.voicesuite"
 
 
 def test_active_source_launch_is_electron_and_web_ports_clean_quietly() -> None:

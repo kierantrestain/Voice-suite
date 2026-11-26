@@ -16,7 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DOCKERHUB_IMAGE: palashdeb/omnivoice-studio
+  # Upstream's Docker Hub repository, or this fork's own DOCKERHUB_IMAGE variable
+  # (docker.yml uses the same rule); a fork never edits upstream's listing.
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE || (github.repository == 'debpalash/VoiceStudio' && 'palashdeb/omnivoice-studio' || '') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -35,7 +37,7 @@ jobs:
           HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           enabled=false
-          if [ -n "$HUB_USERNAME" ] && [ -n "$HUB_TOKEN" ]; then enabled=true; fi
+          if [ -n "$HUB_USERNAME" ] && [ -n "$HUB_TOKEN" ] && [ -n "$DOCKERHUB_IMAGE" ]; then enabled=true; fi
           echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
       # Description-edit scope is separate from image-push scope. Preserve the
       # existing non-gating behavior when the configured token cannot edit it.

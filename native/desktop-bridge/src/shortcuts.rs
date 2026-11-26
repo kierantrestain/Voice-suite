@@ -135,7 +135,9 @@ pub fn run(events: Events, mut emit: impl FnMut(bool)) {
     let mut latch = Latch::default();
     #[cfg(target_os = "linux")]
     let portal = crate::wayland_shortcut_core::PortalShortcutState::for_desktop(
-        "com.voicestudio.desktop",
+        // The desktop id is the app id (config/app.json); upstream VoiceStudio
+        // registers com.voicestudio.desktop, so the two never share an entry.
+        "io.github.kierantrestain.voicesuite",
         std::env::var_os("VOICESTUDIO_DESKTOP_EXE")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| std::env::current_exe().unwrap_or_default()),

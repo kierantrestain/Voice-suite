@@ -14,7 +14,7 @@ import { assertBundleSymlinks } from './packaging/bundle-symlinks.mjs';
 import { finalizeOmnivoiceTts, omnivoiceTtsResources, signMac } from './omnivoice-tts-bundle.mjs';
 import { repairSnapArtifacts } from './snap-template-payload.mjs';
 import { signMasRuntime } from './mas-runtime-bundle.mjs';
-import { APP_ID, PRODUCT_NAME } from '../config/app-config.mjs';
+import { APP_ID, PRODUCT_NAME, RELEASES_URL } from '../config/app-config.mjs';
 import { DISTRIBUTION_PROFILE, DISTRIBUTION_TARGET } from '../config/distributions.mjs';
 import { writeSupermetryConfig } from '../config/supermetry-app.mjs';
 
@@ -33,9 +33,10 @@ const macRuntimeArch = process.env.VOICESTUDIO_RUST_TARGET?.startsWith('x86_64')
     ? 'arm64'
     : process.arch;
 const bundlesMasRuntime = isMacAppStore && macRuntimeArch === 'arm64';
-// Direct downloads are `VoiceStudio-<version>-<os>-<arch>.<ext>`; store builds
-// keep a label so they never collide with them. Releases up to v0.5.7-beta.3
-// used `VoiceStudio-Electron-*`; the installers still resolve those names.
+// Direct downloads are `Voice-Suite-<version>-<os>-<arch>.<ext>` (the product
+// name, config/app.json); store builds keep a label so they never collide with
+// them. Upstream VoiceStudio releases used `VoiceStudio-*` (and up to
+// v0.5.7-beta.3 `VoiceStudio-Electron-*`).
 const artifactLabel = {
   'microsoft-store': 'MicrosoftStore',
   'mac-app-store': 'MacAppStore',
@@ -55,7 +56,8 @@ if (
 ) {
   throw new Error(`Unsupported Electron update channel: ${updateChannel}`);
 }
-const updateUrl = 'https://github.com/debpalash/VoiceStudio/releases/latest/download';
+// This product's own GitHub Releases (config/app.json `releaseRepository`).
+const updateUrl = `${RELEASES_URL}/latest/download`;
 
 export function distributionPackaging(target = DISTRIBUTION_TARGET) {
   if (target === 'snap-store') {
@@ -149,6 +151,9 @@ const notarizeMac =
 // signature is invalid, and quarantined downloads then fail as "damaged"
 // (#2763, #2829, #2681). Sign ad hoc explicitly when no Developer ID is supplied.
 const adhocSignMac = !isMacAppStore && !process.env.CSC_LINK;
+// Read by the updater (updater.ts readMacSigning): Squirrel.Mac rejects every
+// update of an ad hoc build, so those builds send users to the release page.
+const macSigning = isMacAppStore ? 'app-store' : adhocSignMac ? 'adhoc' : 'developer-id';
 
 /** @type {import('electron-builder').Configuration} */
 export default {
@@ -160,6 +165,7 @@ export default {
     desktopName: PRODUCT_NAME,
     voicestudioDistribution: DISTRIBUTION_TARGET,
     voicestudioUpdateOwner: DISTRIBUTION_PROFILE.applicationUpdates,
+    voicesuiteMacSigning: macSigning,
     ...(DISTRIBUTION_TARGET === 'microsoft-store'
       ? { author: { name: storeIdentity.publisherLegalName, email: 'hi@voicestudio.sh' } }
       : {}),

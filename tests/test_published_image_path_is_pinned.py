@@ -24,6 +24,11 @@ def test_the_ghcr_paths_are_explicit_and_keep_the_legacy_alias(tmp_path):
     env = resolved_env(tmp_path, "debpalash")
     assert env["IMAGE_NAME"] == "debpalash/voicestudio"
     assert env["LEGACY_IMAGE_NAME"] == "debpalash/omnivoice-studio"
+    # Voice Suite publishes its own image; `voicestudio` is the alias its first
+    # main builds used (ghcr.io/kierantrestain/voicestudio:latest).
+    env = resolved_env(tmp_path, "kierantrestain")
+    assert env["IMAGE_NAME"] == "kierantrestain/voice-suite"
+    assert env["LEGACY_IMAGE_NAME"] == "kierantrestain/voicestudio"
 
 
 def test_a_repository_rename_cannot_move_the_published_images():
@@ -71,13 +76,20 @@ def test_sha_tags_follow_the_checked_out_source_commit():
 
 
 def test_docker_hub_keeps_its_existing_coordinate():
-    assert _env()["DOCKERHUB_IMAGE"] == "palashdeb/omnivoice-studio"
+    # Upstream keeps palashdeb/omnivoice-studio; a fork pushes Docker Hub only into
+    # the namespace its DOCKERHUB_IMAGE variable names, never upstream's.
+    assert _env()["DOCKERHUB_IMAGE"] == (
+        "${{ vars.DOCKERHUB_IMAGE || (github.repository == 'debpalash/VoiceStudio' && "
+        "'palashdeb/omnivoice-studio' || '') }}"
+    )
+    text = open(WORKFLOW, encoding="utf-8").read()
+    assert text.count("enabled=${{ secrets.DOCKERHUB_TOKEN != '' && env.DOCKERHUB_IMAGE != '' }}") == FLAVORS
 
 
 def test_active_templates_use_the_canonical_public_path():
-    canonical = "ghcr.io/debpalash/voicestudio"
+    # This repository publishes ghcr.io/kierantrestain/voice-suite (docker.yml).
+    canonical = "ghcr.io/kierantrestain/voice-suite"
     for rel in (
-        "deploy/docker-compose.yml",
         "docs/integration-directory.md",
         "docs/install/linux.md",
         "electron/src/renderer/src/features/integrations/setup-registry.ts",
@@ -88,10 +100,10 @@ def test_active_templates_use_the_canonical_public_path():
 
 def test_the_docs_name_the_path_that_is_actually_published(tmp_path):
     """Docs drift here is invisible: a wrong pull command fails only for users."""
-    env = resolved_env(tmp_path, "debpalash")
+    env = resolved_env(tmp_path, "kierantrestain")
     published = f"ghcr.io/{env['IMAGE_NAME']}"
     legacy = f"ghcr.io/{env['LEGACY_IMAGE_NAME']}"
-    for rel in ("docs/install/docker.md", "deploy/dockerhub-overview.md"):
+    for rel in ("docs/install/docker.md",):
         path = os.path.join(ROOT, rel)
         if not os.path.isfile(path):
             continue

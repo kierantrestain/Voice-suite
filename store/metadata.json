@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "identity": {
     "productName": "Voice Suite",
-    "applicationId": "com.voicestudio.desktop",
+    "applicationId": "io.github.kierantrestain.voicesuite",
     "macAppStore": {
       "applicationId": "sh.voicestudio.pro",
       "appStoreConnectId": "6829361961"

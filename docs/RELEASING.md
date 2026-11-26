@@ -450,11 +450,14 @@ Try it on one PR first. If a queued PR stalls, a required check name in the rule
 
 ### Fork container publishing
 
-The Docker workflow publishes canonical `voicestudio`, compatibility
-`omnivoice-studio`, and `voicestudio-buildcache` packages under the lowercase
-repository owner on GHCR. Forks publish only into their own GHCR namespace;
-upstream remains under `ghcr.io/debpalash`. CUDA, ROCm and CUDA arm64 share this
-namespace rule, including registry layer caches and manual release backfills.
-Docker Hub publishing still requires its existing explicit credentials and
-retains its configured image coordinate. Publishing a preview from a fork does
-not publish an upstream application release.
+The Docker workflow publishes under the lowercase repository owner on GHCR.
+Voice Suite (any owner but `debpalash`) publishes canonical `voice-suite`,
+compatibility `voicestudio` and the `voicestudio-buildcache` layer cache:
+`ghcr.io/kierantrestain/voice-suite`. Upstream keeps `voicestudio` and
+`omnivoice-studio` under `ghcr.io/debpalash`. The names follow the owner, not
+the repository name, so a rename never moves them. CUDA, ROCm and CUDA arm64
+share this rule, including registry layer caches and manual release backfills.
+Docker Hub is pushed only when `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` exist and
+a Docker Hub repository is named (upstream's `palashdeb/omnivoice-studio`, or
+this repository's `DOCKERHUB_IMAGE` variable); Voice Suite sets neither, so it
+publishes to GHCR only and never into upstream's Docker Hub namespace.

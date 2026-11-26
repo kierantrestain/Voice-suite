@@ -15,16 +15,19 @@ import re
 from pathlib import Path
 
 # (platform, arch, label, [(link text, asset glob)]); desktop rows need a signing report.
+# The globs match any product prefix (`Voice-Suite-*` here, `VoiceStudio-*` on
+# older tags): this helper runs on its own from the workflow's commit, so it
+# cannot read the release checkout's config/app.json.
 DESKTOP = [
-    ("win32", "x64", "Windows x64", [("Installer", "VoiceStudio-*-win-x64.exe")]),
-    ("win32", "arm64", "Windows ARM64 (experimental)", [("Installer", "VoiceStudio-*-win-arm64.exe")]),
-    ("darwin", "arm64", "macOS Apple Silicon", [("DMG", "VoiceStudio-*-mac-arm64.dmg")]),
-    ("darwin", "x64", "macOS Intel", [("DMG", "VoiceStudio-*-mac-x64.dmg")]),
+    ("win32", "x64", "Windows x64", [("Installer", "*-win-x64.exe")]),
+    ("win32", "arm64", "Windows ARM64 (experimental)", [("Installer", "*-win-arm64.exe")]),
+    ("darwin", "arm64", "macOS Apple Silicon", [("DMG", "*-mac-arm64.dmg")]),
+    ("darwin", "x64", "macOS Intel", [("DMG", "*-mac-x64.dmg")]),
     (
         "linux",
         "x64",
         "Linux x64",
-        [("AppImage", "VoiceStudio-*-linux-x64.AppImage"), ("deb", "VoiceStudio-*-linux-x64.deb")],
+        [("AppImage", "*-linux-x64.AppImage"), ("deb", "*-linux-x64.deb")],
     ),
 ]
 
@@ -33,12 +36,12 @@ DESKTOP = [
 PHONES = [
     (
         "Android",
-        [("APK", "VoiceStudio-*-android.apk"), ("AAB", "VoiceStudio-*-android.aab")],
+        [("APK", "*-android.apk"), ("AAB", "*-android.aab")],
         None,
     ),
     (
         "iPhone",
-        [("Unsigned IPA", "VoiceStudio-*-ios-unsigned.ipa")],
+        [("Unsigned IPA", "*-ios-unsigned.ipa")],
         "⚠️ Unsigned: sign it with your own Apple ID to sideload; not a TestFlight build",
     ),
 ]
@@ -70,7 +73,7 @@ def _links(assets: Path | None, base_url: str, files: list[tuple[str, str]]) -> 
 
 
 def _android_signing(report: dict | None, assets: Path | None, rehearsal: bool) -> str:
-    apks = sorted(assets.glob("VoiceStudio-*-android.apk")) if assets else []
+    apks = sorted(assets.glob("*-android.apk")) if assets else []
     if not apks:
         return "— No APK supplied; APK signing is not verified"
     if len(apks) != 1:
@@ -105,7 +108,8 @@ def _android_signing(report: dict | None, assets: Path | None, rehearsal: bool) 
 
 
 def render(
-    reports_dir: Path, rehearsal: bool = False, assets: Path | None = None, base_url: str = ""
+    reports_dir: Path, rehearsal: bool = False, assets: Path | None = None, base_url: str = "",
+    phones: bool = True,
 ) -> str:
     known = {**STATUS, **REHEARSAL_STATUS} if rehearsal else STATUS
     reports = {}
@@ -131,7 +135,8 @@ def render(
     for platform, arch, label, files in DESKTOP:
         if (platform, arch) in reports:
             lines.append(f"| {label} | {_links(assets, base_url, files)} | {known[reports[(platform, arch)]]} |")
-    for label, files, signing in PHONES:
+    # Releases that do not ship the phone apps (Voice Suite) list no phone rows.
+    for label, files, signing in PHONES if phones else ():
         if label == "Android":
             signing = _android_signing(android, assets, rehearsal)
         lines.append(f"| {label} | {_links(assets, base_url, files)} | {signing} |")
@@ -152,10 +157,12 @@ def main() -> None:
     parser.add_argument("--rehearsal", action="store_true", help="Also accept rehearsal-only statuses")
     parser.add_argument("--assets", type=Path, help="Release assets folder the download links point into")
     parser.add_argument("--base-url", default="", help="Download URL prefix of the release's assets")
+    parser.add_argument("--no-phones", action="store_true", help="This release ships no phone apps: omit their rows")
     parser.add_argument("--notes", type=Path, help="Changelog notes to print after the table, minus their own download table")
     parser.add_argument("reports", type=Path)
     args = parser.parse_args()
-    print(render(args.reports, rehearsal=args.rehearsal, assets=args.assets, base_url=args.base_url), end="")
+    print(render(args.reports, rehearsal=args.rehearsal, assets=args.assets, base_url=args.base_url,
+                 phones=not args.no_phones), end="")
     if args.notes:
         print()
         print(without_own_download_table(args.notes.read_text(encoding="utf-8")), end="")

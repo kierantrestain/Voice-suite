@@ -36,7 +36,8 @@ def resolved_env(tmp_path, owner, job="build-and-push"):
 
 
 @pytest.mark.parametrize("owner,namespace", [
-    ("debpalash", "debpalash"), ("dutch2005", "dutch2005"), ("Mixed-Case", "mixed-case"),
+    ("debpalash", "debpalash"), ("kierantrestain", "kierantrestain"), ("dutch2005", "dutch2005"),
+    ("Mixed-Case", "mixed-case"),
 ])
 @pytest.mark.parametrize("job", JOBS)
 def test_image_and_cache_coordinates_follow_repository_owner(tmp_path, owner, namespace, job):
@@ -45,8 +46,11 @@ def test_image_and_cache_coordinates_follow_repository_owner(tmp_path, owner, na
     steps = workflow["jobs"][job]["steps"]
     source = next(step for step in steps if step.get("id") == "source")
     values = resolved_env(tmp_path, owner, job)
-    assert values["IMAGE_NAME"] == f"{namespace}/voicestudio"
-    assert values["LEGACY_IMAGE_NAME"] == f"{namespace}/omnivoice-studio"
+    # Upstream keeps its names; Voice Suite (every other owner) publishes its own
+    # image with the `voicestudio` path its first main builds used as an alias.
+    image, legacy = ("voicestudio", "omnivoice-studio") if namespace == "debpalash" else ("voice-suite", "voicestudio")
+    assert values["IMAGE_NAME"] == f"{namespace}/{image}"
+    assert values["LEGACY_IMAGE_NAME"] == f"{namespace}/{legacy}"
     assert values["BUILDCACHE_IMAGE"] == f"ghcr.io/{namespace}/voicestudio-buildcache"
     assert not {"IMAGE_NAME", "LEGACY_IMAGE_NAME", "BUILDCACHE_IMAGE"} & workflow["env"].keys()
     metadata = next(step for step in steps if step.get("id") == "meta")

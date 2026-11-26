@@ -370,7 +370,7 @@ bun run dev
 
 安定版イメージ · CPU · NVIDIA CUDA · AMD ROCm。
 
-<a href="https://github.com/debpalash/VoiceStudio/pkgs/container/voicestudio"><img src="https://img.shields.io/badge/GHCR-27272a?style=flat-square&amp;logo=github&amp;logoColor=ffffff" alt="GHCR" height="20" /></a>
+<a href="https://github.com/kierantrestain/Voice-suite/pkgs/container/voice-suite"><img src="https://img.shields.io/badge/GHCR-27272a?style=flat-square&amp;logo=github&amp;logoColor=ffffff" alt="GHCR" height="20" /></a>
 
 **ローカル CPU で実行（Bash）**
 
@@ -381,7 +381,7 @@ docker run -d --name omnivoice \
   -e OMNIVOICE_API_KEY \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 printf 'API key: %s\n' "$OMNIVOICE_API_KEY"
 ```
 

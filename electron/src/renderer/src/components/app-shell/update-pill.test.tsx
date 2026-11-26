@@ -184,13 +184,28 @@ describe('UpdatePill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'update.download_manually' }));
     await waitFor(() =>
       expect(mocks.openExternal).toHaveBeenCalledWith(
-        'https://github.com/debpalash/VoiceStudio/releases/tag/v0.5.3',
+        'https://github.com/kierantrestain/Voice-suite/releases/tag/v0.5.3',
       ),
     );
     fireEvent.click(pill()!);
     fireEvent.click(await screen.findByRole('button', { name: 'update.retry' }));
     await waitFor(() => expect(mocks.check).toHaveBeenCalledOnce());
     expect(mocks.download).toHaveBeenCalledOnce();
+  });
+
+  test('an unsigned macOS build offers the release page, never an in-app download', async () => {
+    renderPill({ status: 'available', availableVersion: '0.6.1', manualInstall: true });
+    await waitFor(() => expect(pill()).toHaveTextContent('update.pill_update'));
+    fireEvent.click(pill()!);
+    expect(await screen.findByText('update.manual_install_hint')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'update.download' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'update.download_manually' }));
+    await waitFor(() =>
+      expect(mocks.openExternal).toHaveBeenCalledWith(
+        'https://github.com/kierantrestain/Voice-suite/releases/tag/v0.6.1',
+      ),
+    );
+    expect(mocks.download).not.toHaveBeenCalled();
   });
 
   test('failed: Later clears the error', async () => {

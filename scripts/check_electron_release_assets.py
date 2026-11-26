@@ -40,13 +40,24 @@ OPTIONAL_TARGETS = {
 }
 
 
+def _artifact_prefix() -> str:
+    """The product name as electron-builder.config.mjs spells it in file names."""
+    config = Path(__file__).resolve().parents[1] / "config" / "app.json"
+    product = json.loads(config.read_text(encoding="utf-8"))["productName"]
+    return re.sub(r"[^A-Za-z0-9]+", "-", product)
+
+
+# `Voice-Suite` for Voice Suite. Upstream VoiceStudio releases used `VoiceStudio`.
+ARTIFACT_PREFIX = _artifact_prefix()
+
+
 def artifact_name(version: str, os_token: str, arch: str, extension: str) -> str:
     """Direct-download name (electron-builder.config.mjs `artifactName`).
 
-    Releases up to v0.5.7-beta.3 were `VoiceStudio-Electron-*`; they are built
-    and verified from their own tags, so only the current name is checked here.
+    Older releases (`VoiceStudio-*`, `VoiceStudio-Electron-*`) are built and
+    verified from their own tags, so only the current name is checked here.
     """
-    return f"VoiceStudio-{version}-{os_token}-{arch}{extension}"
+    return f"{ARTIFACT_PREFIX}-{version}-{os_token}-{arch}{extension}"
 
 
 class ReleaseContractError(RuntimeError):

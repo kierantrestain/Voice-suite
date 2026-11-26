@@ -77,7 +77,9 @@ export function UpdatePill() {
       : state.status === 'downloaded'
         ? t('update.ready', { version: state.availableVersion ?? '' })
         : state.status === 'error'
-          ? t(updateErrorTitleKey(state), { version: state.availableVersion ?? '' })
+          ? t(updateErrorTitleKey(state), {
+              version: state.availableVersion ?? '',
+            })
           : t('update.available', { version: state.availableVersion ?? '' });
   const detail =
     state.status === 'downloading' && state.totalBytes
@@ -166,6 +168,9 @@ export function UpdatePill() {
             {t(state.installOnQuit ? 'update.ready_hint_quit' : 'update.ready_hint_restart')}
           </p>
         )}
+        {state.status === 'available' && state.manualInstall && (
+          <p className="text-xs text-muted-foreground">{t('update.manual_install_hint')}</p>
+        )}
         {state.status === 'error' && state.error && (
           <details className="text-xs text-muted-foreground">
             <summary className="cursor-pointer">{t('common.more_info')}</summary>
@@ -180,14 +185,16 @@ export function UpdatePill() {
             />
           </div>
         )}
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 self-start text-xs text-primary hover:underline"
-          onClick={() => act('manual')}
-        >
-          <ExternalLinkIcon className="size-3" aria-hidden="true" />
-          {t(state.status === 'error' ? 'update.download_manually' : 'update.view_release')}
-        </button>
+        {!(state.status === 'available' && state.manualInstall) && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 self-start text-xs text-primary hover:underline"
+            onClick={() => act('manual')}
+          >
+            <ExternalLinkIcon className="size-3" aria-hidden="true" />
+            {t(state.status === 'error' ? 'update.download_manually' : 'update.view_release')}
+          </button>
+        )}
         <div className="flex items-center justify-end gap-2">
           {state.status !== 'downloading' && (
             <Button size="sm" variant="ghost" onClick={() => act('later')}>
@@ -205,10 +212,16 @@ export function UpdatePill() {
               {t('update.retry')}
             </Button>
           )}
-          {state.status === 'available' && (
+          {state.status === 'available' && !state.manualInstall && (
             <Button size="sm" onClick={() => act('download')}>
               <DownloadIcon />
               {t('update.download')}
+            </Button>
+          )}
+          {state.status === 'available' && state.manualInstall && (
+            <Button size="sm" onClick={() => act('manual')}>
+              <ExternalLinkIcon />
+              {t('update.download_manually')}
             </Button>
           )}
         </div>

@@ -350,7 +350,7 @@ export function UpdateSettings() {
                 <XIcon />
               </Button>
             )}
-            {state.status === 'available' && (
+            {state.status === 'available' && !state.manualInstall && (
               <Button
                 size="sm"
                 disabled={action}
@@ -361,6 +361,20 @@ export function UpdateSettings() {
                 {t('update.download')}
               </Button>
             )}
+            {state.status === 'available' && state.manualInstall && (
+              <Button
+                size="sm"
+                data-slot="update-manual-download"
+                onClick={() =>
+                  void openUpdateRelease(state.availableVersion).catch(() =>
+                    toast.error(t('update.failed')),
+                  )
+                }
+              >
+                <ExternalLinkIcon />
+                {t('update.download_manually')}
+              </Button>
+            )}
             {state.status === 'downloaded' && (
               <Button size="sm" disabled={action} onClick={() => void restart()}>
                 <RotateCwIcon />
@@ -369,7 +383,12 @@ export function UpdateSettings() {
             )}
           </div>
         </div>
-        {state.autoDownload !== undefined && (
+        {state.manualInstall && (
+          <p data-slot="update-manual-hint" className="px-4 py-3 text-xs text-muted-foreground">
+            {t('update.manual_install_hint')}
+          </p>
+        )}
+        {state.autoDownload !== undefined && !state.manualInstall && (
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p id="update-auto-download-label" className="text-sm font-medium">
@@ -505,10 +524,10 @@ export function UpdateSettings() {
             {!backendUp
               ? t('updates.backup_needs_runtime')
               : backup.data?.available && backup.data.latest
-                  ? t('updates.backup_latest', {
-                      when: new Date(backup.data.latest.created_at * 1000).toLocaleString(),
-                    })
-                  : t('updates.backup_none')}
+                ? t('updates.backup_latest', {
+                    when: new Date(backup.data.latest.created_at * 1000).toLocaleString(),
+                  })
+                : t('updates.backup_none')}
           </div>
         )}
       </SettingsSection>

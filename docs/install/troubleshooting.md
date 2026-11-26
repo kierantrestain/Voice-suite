@@ -1238,7 +1238,8 @@ System Settings → Privacy & Security → Microphone and enable VoiceStudio" �
 but VoiceStudio never appears in that list, so there's nothing to enable.
 `NSMicrophoneUsageDescription` is present in the app's `Info.plist`, and
 resetting the permission (`tccutil reset Microphone
-com.voicestudio.desktop`) followed by a relaunch changes nothing — no
+io.github.kierantrestain.voicesuite`; upstream VoiceStudio builds use
+`com.voicestudio.desktop`) followed by a relaunch changes nothing — no
 system prompt ever appears.
 
 **Cause:** the app bundle was missing the Hardened Runtime *entitlement* for

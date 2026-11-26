@@ -9,6 +9,7 @@ import { applicationUpdatesUnsupportedReason, CURRENT_DISTRIBUTION } from './dis
 import type { DistributionTarget } from '../../../config/distributions.mjs';
 import { GitHubAssetProvider, releaseAssets, type ReleaseAssets } from './github-asset-provider';
 import { cleanInstalledUpdateDownload } from './updater-cache';
+import { ARTIFACT_PREFIX, RELEASES_API_URL, RELEASES_URL } from '../../../config/app-config.mjs';
 
 // electron-updater is CommonJS. Electron executes our main bundle as ESM, so
 // named runtime imports fail before the app can create a window.
@@ -20,13 +21,63 @@ const { autoUpdater, CancellationToken } = updaterPackage;
 // `latest/download` never serves a prerelease, so Beta resolves its release
 // through the releases API (see resolveBetaFeed).
 export type UpdateChannel = 'stable' | 'beta';
-const STABLE_FEED = 'https://github.com/debpalash/VoiceStudio/releases/latest/download';
-const RELEASES_API = 'https://api.github.com/repos/debpalash/VoiceStudio/releases?per_page=30';
-const LATEST_RELEASE_API = 'https://api.github.com/repos/debpalash/VoiceStudio/releases/latest';
+// Voice Suite follows only its own repository's releases (config/app.json
+// `releaseRepository`). Upstream VoiceStudio's feeds serve a different product
+// and must never be offered to a Voice Suite install.
+const STABLE_FEED = `${RELEASES_URL}/latest/download`;
+const RELEASES_API = `${RELEASES_API_URL}?per_page=30`;
+const LATEST_RELEASE_API = `${RELEASES_API_URL}/latest`;
+const RELEASE_DOWNLOAD = `${RELEASES_URL}/download`;
+/** Every URL the updater reads, for tests and the docs. */
+export const UPDATE_FEED_URLS = Object.freeze({
+  stable: STABLE_FEED,
+  releases: RELEASES_API,
+  latest: LATEST_RELEASE_API,
+  download: RELEASE_DOWNLOAD,
+});
 const GITHUB_API_HEADERS = {
   Accept: 'application/vnd.github+json',
-  'User-Agent': 'VoiceStudio',
+  'User-Agent': ARTIFACT_PREFIX,
 } as const;
+
+/**
+ * How the macOS bundle was signed, stamped into the packaged package.json by
+ * electron-builder.config.mjs (`voicesuiteMacSigning`). Squirrel.Mac installs
+ * an update only when its signature satisfies the running app's designated
+ * requirement; an ad hoc signature names one exact build, so every update of
+ * an ad hoc build is rejected after the whole download. Such builds (no
+ * Developer ID configured) check for updates and send the user to the release
+ * page instead. Anything but an explicit Developer ID counts as unsigned.
+ */
+export function readMacSigning(appPath?: string): 'developer-id' | 'adhoc' {
+  try {
+    const metadata: unknown = JSON.parse(
+      readFileSync(join(appPath ?? app.getAppPath(), 'package.json'), 'utf8'),
+    );
+    return metadata &&
+      typeof metadata === 'object' &&
+      (metadata as Record<string, unknown>).voicesuiteMacSigning === 'developer-id'
+      ? 'developer-id'
+      : 'adhoc';
+  } catch {
+    return 'adhoc';
+  }
+}
+
+/**
+ * True when this install cannot replace itself, so a found update is offered
+ * as a download from the release page: an unsigned (ad hoc) macOS build.
+ * Windows and Linux install unsigned updates after electron-updater's SHA-512
+ * check of the same GitHub release a manual download would use (a configured
+ * Windows certificate additionally pins the publisher), so they keep updating
+ * in place.
+ */
+export function updatesNeedManualInstall(
+  platform: NodeJS.Platform = process.platform,
+  macSigning: () => 'developer-id' | 'adhoc' = readMacSigning,
+): boolean {
+  return platform === 'darwin' && macSigning() !== 'developer-id';
+}
 
 /**
  * A feed electron-updater reads its channel manifest from. `tag` and `assets`
@@ -62,7 +113,6 @@ export function feedManifestName(
   return `${feedChannelName(platform, arch, distribution, channel)}${suffix}.yml`;
 }
 
-const RELEASE_DOWNLOAD = 'https://github.com/debpalash/VoiceStudio/releases/download';
 const RELEASE_TAG = /^v(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$/;
 
 /** Orders `vX.Y.Z-beta.N` below `vX.Y.Z`, as semver does. */
@@ -255,10 +305,7 @@ export async function resolveUpdateFeedUrl(
   if (distribution !== 'microsoft-store') return STABLE_FEED;
   const manifest = feedManifestName(platform, arch, distribution);
   const response = await fetcher(RELEASES_API, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'VoiceStudio',
-    },
+    headers: GITHUB_API_HEADERS,
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Store update feed lookup failed (${response.status})`);
@@ -302,9 +349,7 @@ export async function resolveUpdateFeedUrl(
   });
   const release = matchingReleases[0]?.release;
   if (!release) throw new Error(`No Microsoft Store update feed publishes ${manifest}`);
-  return `https://github.com/debpalash/VoiceStudio/releases/download/${encodeURIComponent(
-    release.tag_name as string,
-  )}`;
+  return `${RELEASE_DOWNLOAD}/${encodeURIComponent(release.tag_name as string)}`;
 }
 
 export const UPDATE_CHANNELS = {
@@ -324,10 +369,7 @@ export async function listDesktopReleases(
   fetcher: typeof fetch = fetch,
 ): Promise<UpdateReleaseInfo[]> {
   const response = await fetcher(RELEASES_API, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'VoiceStudio',
-    },
+    headers: GITHUB_API_HEADERS,
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Releases request failed (${response.status})`);
@@ -469,6 +511,9 @@ export class DesktopUpdater {
   private installOnQuit = false;
   private installing = false;
   private differentialDisabledByDefault = false;
+  // An unsigned macOS build: found updates open the release page (see
+  // updatesNeedManualInstall); nothing downloads or installs in place.
+  private manualInstall = false;
   // Removes an already-installed download; checks wait so it never races one.
   private cacheCleanup: Promise<void> | null = null;
 
@@ -477,6 +522,7 @@ export class DesktopUpdater {
     private readonly feedFetcher: typeof fetch = fetch,
     private readonly retryDelaysMs: readonly number[] = UPDATE_RETRY_DELAYS_MS,
     private readonly stallTimeoutMs: number = UPDATE_STALL_TIMEOUT_MS,
+    needsManualInstall: () => boolean = updatesNeedManualInstall,
   ) {
     const supported = this.updatesSupported();
     // Store builds are stable-only, so they expose no channel to switch. A dev
@@ -501,13 +547,15 @@ export class DesktopUpdater {
     });
 
     const prefs = readUpdatePrefs();
-    this.autoDownload = prefs.autoDownload !== false;
-    this.installOnQuit = installsOnQuit();
+    this.manualInstall = needsManualInstall();
+    this.autoDownload = prefs.autoDownload !== false && !this.manualInstall;
+    this.installOnQuit = installsOnQuit() && !this.manualInstall;
     this.state = {
       ...this.state,
       autoDownload: this.autoDownload,
       installOnQuit: this.installOnQuit,
       dismissedVersion: prefs.dismissedVersion,
+      ...(this.manualInstall ? { manualInstall: true } : {}),
     };
     // An install was started last session: it either took effect or did not.
     if (prefs.pendingVersion) {
@@ -732,7 +780,12 @@ export class DesktopUpdater {
    * schedule retries them later.
    */
   async download({ quiet = false }: { quiet?: boolean } = {}): Promise<UpdateState> {
-    if (!this.updatesSupported() || this.checkInFlight || this.state.status !== 'available')
+    if (
+      !this.updatesSupported() ||
+      this.manualInstall ||
+      this.checkInFlight ||
+      this.state.status !== 'available'
+    )
       return this.snapshot();
     if (this.downloadInFlight) return this.downloadInFlight;
     this.operating = true;
@@ -908,6 +961,7 @@ export class DesktopUpdater {
       autoDownload: this.state.autoDownload,
       installOnQuit: this.state.installOnQuit,
       dismissedVersion: this.state.dismissedVersion,
+      manualInstall: this.state.manualInstall,
     };
     this.emit();
     return this.snapshot();
@@ -924,7 +978,7 @@ export class DesktopUpdater {
 
   /** Turning automatic downloads on starts one for an update already offered. */
   setAutoDownload(enabled: boolean): UpdateState {
-    if (!this.updatesSupported()) return this.snapshot();
+    if (!this.updatesSupported() || this.manualInstall) return this.snapshot();
     this.autoDownload = enabled;
     saveUpdatePrefs({ autoDownload: enabled });
     this.patch({ autoDownload: enabled });
@@ -970,13 +1024,15 @@ export class DesktopUpdater {
       autoDownload: this.state.autoDownload,
       installOnQuit: this.state.installOnQuit,
       dismissedVersion: this.state.dismissedVersion,
+      manualInstall: this.state.manualInstall,
     };
     this.emit();
     return this.snapshot();
   }
 
   install(): void {
-    if (!this.updatesSupported() || this.state.status !== 'downloaded') return;
+    if (!this.updatesSupported() || this.manualInstall || this.state.status !== 'downloaded')
+      return;
     if (this.state.availableVersion)
       saveUpdatePrefs({ pendingVersion: this.state.availableVersion });
     this.installing = true;
