@@ -19,6 +19,11 @@ is no longer maintained; if you still run it, follow the
 > instead of reporting an incomplete Python environment
 > ([#3584](https://github.com/debpalash/VoiceStudio/issues/3584)).
 
+
+On Apple Silicon, open Voice Suite and choose **Install local runtime**. The app provides its own interpreter, starts inference and checks the connection. Pick Lightweight, Balanced or Studio Quality and install each model when you need it. The setup screen shows the model size and licence. Playback of the test clip uses the downloaded local voice.
+
+**Settings → Storage** reports the desktop bundle, installed runtime, temporary installer cache and cached model sizes. Use the Models and Data folder controls there to move weights and backend projects to an external SSD. Runtime, network and credential controls are under **Advanced**.
+
 ## Requirements
 
 - **macOS 13.3 (Ventura) or newer** on Apple Silicon (Intel: UI only, see the

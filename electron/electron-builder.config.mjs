@@ -157,6 +157,7 @@ const macSigning = isMacAppStore ? 'app-store' : adhocSignMac ? 'adhoc' : 'devel
 
 /** @type {import('electron-builder').Configuration} */
 export default {
+  protocols: [{ name: PRODUCT_NAME, schemes: ['voice-suite'] }],
   appId: isMacAppStore ? storeIdentity.macAppStore.applicationId : APP_ID,
   productName: PRODUCT_NAME,
   extraMetadata: {

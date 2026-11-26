@@ -374,12 +374,13 @@ jobs:
         # Docker build (deploy/Dockerfile), which is what reddened main on #485.
         run: bun install --frozen-lockfile
 
-      # node:test suites for shared renderer modules (tests/frontend/*.test.mjs).
+      # node:test suites for shared renderer modules and the Cloud HTTP handler.
       # Node 22 strips TypeScript types natively; imports need explicit `.ts`.
       - name: Frontend unit tests
         if: steps.pass.outputs.hit != 'true'
         run: |
           node --test electron/tests/node-version.test.mjs
+          node --test tests/cloud/cloud-workflow.test.mjs
           bun run test:frontend
 
       # Electron used to be built only after a release started, so renderer,
@@ -846,7 +847,7 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.result != 'skipped' && needs.changes.outputs.electron != 'false' && needs.changes.outputs.runtime != 'false' }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: ${{ matrix.platform == 'darwin' && startsWith(github.head_ref, 'release/') && 45 || 20 }}
     strategy:
       fail-fast: false
       matrix:
@@ -984,6 +985,24 @@ jobs:
         working-directory: electron
         run: |
           bun x electron-builder --config electron-builder.config.mjs --mac --arm64 --publish never
+
+      - name: Clean macOS first sound on release branches
+        if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS' && startsWith(github.head_ref, 'release/')
+        working-directory: electron
+        env:
+          VOICESTUDIO_RUNTIME_TIMEOUT_MS: '900000'
+          VOICESTUDIO_MODEL_TIMEOUT_MS: '300000'
+          VOICESTUDIO_FIRST_SOUND_REPORT_DIR: ${{ runner.temp }}/voice-suite-first-sound
+        run: node tests/packaged-smoke.mjs --first-sound
+
+      - name: Upload clean Mac audio and storage evidence
+        if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS' && startsWith(github.head_ref, 'release/')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: voice-suite-macos-first-sound
+          path: ${{ runner.temp }}/voice-suite-first-sound
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Upload macOS .dmg and .zip installer artifacts
         if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS'

@@ -1,5 +1,5 @@
 import { _electron as electron } from 'playwright';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -344,97 +344,68 @@ try {
       );
     }
     if (firstSound) {
-      const continueButton = window.getByRole('button', {
-        name: 'Continue',
+      const installModel = window.getByRole('button', {
+        name: 'Install Text to speech',
         exact: true,
       });
-      const systemCheck = window.getByRole('button', {
-        name: /^(System check|Re-check)$/,
+      const useModel = window.getByRole('button', { name: 'Use this model', exact: true }).first();
+      const chooseModel = installModel.or(useModel).first();
+      await chooseModel.waitFor({ timeout: 120_000 });
+      await activate(chooseModel);
+      const generate = window.getByRole('button', { name: 'Generate a test clip', exact: true });
+      await generate.waitFor({
+        timeout: Number(process.env.VOICESTUDIO_MODEL_TIMEOUT_MS) || 900_000,
       });
-      await systemCheck.waitFor({ timeout: 120_000 });
-      await activate(systemCheck);
-      await continueButton.waitFor({ state: 'visible' });
-      await assertEventually(
-        async () => continueButton.isEnabled(),
-        120_000,
-        'System preflight did not enable onboarding',
-      );
-      await activate(continueButton);
-
-      const requiredModel = window
-        .locator('#model-k2-fsa-OmniVoice')
-        .locator('xpath=ancestor::*[@data-slot="settings-row"][1]');
-      await requiredModel.waitFor({ timeout: 120_000 });
-      const modelsReady = await window.evaluate(async () => {
-        const response = await fetch('/api/setup/status');
-        return response.ok && (await response.json()).models_ready === true;
+      const startedAt = Date.now();
+      await activate(generate);
+      const audio = window.getByLabel('Generate a test clip', { exact: true });
+      await audio.waitFor({
+        timeout: Number(process.env.VOICESTUDIO_FIRST_SOUND_TIMEOUT_MS) || 300_000,
       });
-      if (!modelsReady) {
-        const download = requiredModel.getByRole('button', {
-          name: 'Download',
-          exact: true,
-        });
-        await activate(download);
-        await waitForSetupModels(
-          window,
-          Number(process.env.VOICESTUDIO_MODEL_TIMEOUT_MS) || 3_600_000,
-        );
-      }
-      await assertEventually(
-        async () => continueButton.isEnabled(),
-        30_000,
-        'Required model completed but onboarding remained blocked',
-      );
-      await activate(continueButton);
-
-      const decline = window.getByRole('button', {
-        name: 'No thanks',
-        exact: true,
-      });
-      if (await decline.isVisible().catch(() => false)) await activate(decline);
-      await assertEventually(
-        async () => continueButton.isEnabled(),
-        30_000,
-        'Privacy choice did not enable onboarding',
-      );
-      await activate(continueButton);
-      const enter = window.getByRole('button', {
-        name: 'Enter studio',
-        exact: true,
-      });
-      await enter.waitFor();
-      await activate(enter);
-
-      await window.getByRole('region', { name: 'Latest take', exact: true }).waitFor({
-        timeout: Number(process.env.VOICESTUDIO_FIRST_SOUND_TIMEOUT_MS) || 1_800_000,
-      });
-      const proof = await window.evaluate(async () => {
-        const historyResponse = await fetch('/api/history');
-        if (!historyResponse.ok) throw new Error(`History returned ${historyResponse.status}`);
-        const history = await historyResponse.json();
-        const take = Array.isArray(history) ? history[0] : null;
-        if (!take?.audio_path) throw new Error('First sound did not create a history artifact');
-        const audioResponse = await fetch('/api/audio/' + encodeURIComponent(take.audio_path));
-        if (!audioResponse.ok) throw new Error(`Audio returned ${audioResponse.status}`);
-        const bytes = new Uint8Array(await audioResponse.arrayBuffer());
+      const elapsedMs = Date.now() - startedAt;
+      const proof = await audio.evaluate(async (element) => {
+        const response = await fetch(element.src);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const decoder = new TextDecoder('ascii');
         return {
-          id: take.id,
           size: bytes.byteLength,
-          riff: new TextDecoder('ascii').decode(bytes.slice(0, 4)),
-          wave: new TextDecoder('ascii').decode(bytes.slice(8, 12)),
-          paused: Array.from(document.querySelectorAll('audio, video')).every(
-            (media) => media.paused,
-          ),
+          riff: decoder.decode(bytes.subarray(0, 4)),
+          wave: decoder.decode(bytes.subarray(8, 12)),
+          bits: new DataView(bytes.buffer).getUint16(34, true),
+          paused: element.paused,
         };
       });
-      assert(proof.id);
       assert(proof.size > 44, 'First sound WAV is empty');
       assert.equal(proof.riff, 'RIFF');
       assert.equal(proof.wave, 'WAVE');
-      assert.equal(proof.paused, true, 'Completed first sound must await manual playback');
-      console.log(
-        `PASS: ${existing ? 'resumed' : 'uncached'} packaged onboarding produced a paused ${proof.size}-byte first-sound WAV`,
-      );
+      assert.equal(proof.bits, 24);
+      assert.equal(proof.paused, true, 'First sound must wait for playback');
+      await audio.evaluate((element) => element.play());
+      await window.waitForFunction(() => document.querySelector('audio')?.currentTime > 0.25);
+      await audio.evaluate((element) => element.pause());
+      const reportDir = process.env.VOICESTUDIO_FIRST_SOUND_REPORT_DIR;
+      if (reportDir) {
+        const wave = await audio.evaluate(async (element) =>
+          Array.from(new Uint8Array(await (await fetch(element.src)).arrayBuffer())),
+        );
+        mkdirSync(reportDir, { recursive: true });
+        writeFileSync(join(reportDir, 'first-sound.wav'), Buffer.from(wave));
+      }
+      console.log('PASS: first-run KittenTTS produced and played a 24-bit WAV', {
+        size: proof.size,
+        elapsedMs,
+      });
+      const storage = await window.evaluate(async () => {
+        const response = await fetch('/api/api/settings/storage?refresh=1');
+        if (!response.ok) throw new Error('Storage report returned ' + response.status);
+        const { categories } = await response.json();
+        return categories.map(({ id, bytes }) => ({ id, bytes }));
+      });
+      assert(storage.some(({ id, bytes }) => id === 'runtime' && bytes > 0));
+      if (reportDir) writeFileSync(join(reportDir, 'storage.json'), JSON.stringify(storage, null, 2));
+      await activate(window.getByRole('button', { name: 'Enter studio', exact: true }));
+      await window.getByRole('heading', { name: 'Home', exact: true }).waitFor();
+      console.log('PASS: entered the studio with measured storage', storage);
     }
     if (!firstSound) {
       await window.getByText('VoiceStudio', { exact: true }).first().waitFor({ timeout: 120_000 });
@@ -541,35 +512,4 @@ async function waitForRuntimeGate(window, timeout) {
     if (Date.now() >= deadline) throw new Error('Runtime setup gate timed out');
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-}
-
-async function waitForSetupModels(window, timeout) {
-  const deadline = Date.now() + timeout;
-  let last = '';
-  while (Date.now() < deadline) {
-    const state = await window.evaluate(async () => {
-      const [setupResponse, jobsResponse] = await Promise.all([
-        fetch('/api/setup/status'),
-        fetch('/api/models/install/status'),
-      ]);
-      return {
-        setup: setupResponse.ok ? await setupResponse.json() : null,
-        jobs: jobsResponse.ok ? await jobsResponse.json() : null,
-      };
-    });
-    if (state.setup?.models_ready) return;
-    const job = state.jobs?.jobs?.find((item) => item.repo_id === 'k2-fsa/OmniVoice');
-    const summary = [job?.state, job?.phase, job?.bytes_done, job?.total_bytes]
-      .filter((value) => value !== undefined && value !== null)
-      .join(' ');
-    if (summary && summary !== last) {
-      console.log('Model:', summary);
-      last = summary;
-    }
-    if (job?.state === 'failed' || job?.state === 'cancelled') {
-      throw new Error(`Required model installation ${job.state}: ${job.error || 'unknown error'}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-  }
-  throw new Error('Required model installation timed out');
 }

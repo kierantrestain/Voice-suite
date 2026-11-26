@@ -643,7 +643,7 @@ describe('packaged runtime setup', () => {
   });
   // #3411: uv cannot resume, and a cancelled uv leaves its partial wheel in the
   // cache. Retry must drop those leftovers yet reuse every finished download.
-  it('drops partial downloads from a cancelled attempt and keeps finished wheels', async () => {
+  it('reuses complete wheels on retry and drops the install cache after a successful Mac setup', async () => {
     const { bundle, project } = await fixture();
     const cache = join(project, '..', '.uv-cache');
     await mkdir(join(cache, '.tmpHZ1msW', 'torch'), { recursive: true });
@@ -651,8 +651,12 @@ describe('packaged runtime setup', () => {
     await mkdir(join(cache, 'archive-v0', 'finished'), { recursive: true });
     await writeFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'verified');
     let leftoverAtSync: boolean | undefined;
+    let finishedAtSync: boolean | undefined;
     const run = vi.fn(async (_command: string, args: string[]) => {
-      if (args[0] === 'sync') leftoverAtSync = existsSync(join(cache, '.tmpHZ1msW'));
+      if (args[0] === 'sync') {
+        leftoverAtSync = existsSync(join(cache, '.tmpHZ1msW'));
+        finishedAtSync = existsSync(join(cache, 'archive-v0', 'finished', 'torch.so'));
+      }
       await interpreter(project);
     });
 
@@ -667,8 +671,9 @@ describe('packaged runtime setup', () => {
     );
 
     expect(leftoverAtSync).toBe(false);
-    expect(await readFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'utf8')).toBe(
-      'verified',
+    expect(finishedAtSync).toBe(true);
+    expect(existsSync(join(cache, 'archive-v0', 'finished', 'torch.so'))).toBe(
+      process.platform !== 'darwin',
     );
   });
   it('uses managed Python for new runtime setup and verifies native tokenizer imports', async () => {

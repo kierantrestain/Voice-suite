@@ -39,6 +39,7 @@ class PrincipalKind(str, Enum):
     PIN = "pin"
     API_KEY = "api_key"
     ADMIN_SESSION = "admin_session"
+    STUDIO_SESSION = "studio_session"
 
 
 class CredentialTransport(str, Enum):
@@ -251,10 +252,22 @@ class UntrustedLoopbackMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope.get("type") in ("http", "websocket") and loopback_requires_key():
+        if scope.get("type") in ("http", "websocket"):
             client = scope.get("client")
             if client and _is_loopback_address(client[0]):
-                scope = {**scope, "client": None}
+                from starlette.requests import HTTPConnection
+                from services.studio_sessions import SESSION_PREFIX, TICKET_PREFIX, desktop_pair_origin
+
+                connection = HTTPConnection(scope)
+                candidate = _credential_candidate(connection)
+                studio = candidate and candidate.value.startswith((SESSION_PREFIX, TICKET_PREFIX))
+                paired_origin = desktop_pair_origin()
+                if (
+                    loopback_requires_key()
+                    or studio
+                    or (paired_origin and connection.headers.get("origin") == paired_origin)
+                ):
+                    scope = {**scope, "client": None, "_studio_transport": bool(studio)}
         return await self.app(scope, receive, send)
 
 
@@ -486,6 +499,27 @@ def _candidate_principal(
 
     A WebSocket ticket is single-use: validating one consumes it.
     """
+    from services.studio_sessions import (
+        SESSION_PREFIX, TICKET_PREFIX, desktop_pair_origin, studio_key, studio_sessions,
+    )
+
+    if candidate.value.startswith((SESSION_PREFIX, TICKET_PREFIX)):
+        origin = desktop_pair_origin()
+        if origin and connection.headers.get("origin") != origin:
+            return None
+        session = None
+        if candidate.allow_session and candidate.transport is CredentialTransport.HEADER:
+            session = studio_sessions.resolve(candidate.value, studio_key())
+        elif candidate.allow_ticket:
+            session = studio_sessions.consume_ws_ticket(
+                candidate.value, _canonical_websocket_path(connection), studio_key(),
+            )
+        if session is None:
+            return None
+        return AuthPrincipal(
+            PrincipalKind.STUDIO_SESSION, session.capabilities, session.credential_id, candidate.transport,
+        )
+
     principal: AuthPrincipal | None = None
     if (
         candidate.allow_master

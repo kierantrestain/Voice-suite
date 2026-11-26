@@ -1,5 +1,5 @@
 import { NativeDictationSync } from '@/hooks/use-native-dictation';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GenerationProvider } from '@/hooks/use-generate';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -23,7 +23,16 @@ import { RealtimeEventSync } from '@/hooks/use-realtime-events';
 import { GenerateBudgetSync } from '@/hooks/use-generate-budget-sync';
 import { runRendererTask } from '@/lib/global-error-recovery';
 import { WebAuthGate } from '@/components/web-auth-gate';
+
 import { ModelLicenceGate } from '@/features/settings/model-licence-acceptance';
+
+const ConnectionGate = __HOSTED_FRONTEND__
+  ? lazy(() =>
+      import('@/components/hosted-connection').then(({ HostedConnectionGate }) => ({
+        default: HostedConnectionGate,
+      })),
+    )
+  : WebAuthGate;
 
 export function App() {
   const { t } = useTranslation();
@@ -88,26 +97,28 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <WebAuthGate>
-          <NativeDictationSync />
-          <ModelInstallSync />
-          <RealtimeEventSync />
-          <GenerateBudgetSync />
-          <AnalyticsRuntime />
-          <DiagnosticRuntime />
-          <CloudSyncRuntime />
-          <AnalyticsConsentBanner />
-          <GpuOfferBanner />
-          <GenerationProvider>
-            <FirstSoundHandoff />
-            <TooltipProvider>
-              <RouterProvider router={router} />
-              <ModelLicenceGate />
-              <UpdateRestartConfirm />
-              <Toaster richColors position="bottom-right" />
-            </TooltipProvider>
-          </GenerationProvider>
-        </WebAuthGate>
+        <Suspense fallback={null}>
+          <ConnectionGate>
+            <NativeDictationSync />
+            <ModelInstallSync />
+            <RealtimeEventSync />
+            <GenerateBudgetSync />
+            <AnalyticsRuntime />
+            <DiagnosticRuntime />
+            <CloudSyncRuntime />
+            <AnalyticsConsentBanner />
+            <GpuOfferBanner />
+            <GenerationProvider>
+              <FirstSoundHandoff />
+              <TooltipProvider>
+                <RouterProvider router={router} />
+                <ModelLicenceGate />
+                <UpdateRestartConfirm />
+              </TooltipProvider>
+            </GenerationProvider>
+          </ConnectionGate>
+        </Suspense>
+        <Toaster richColors position="bottom-right" />
       </ErrorBoundary>
     </QueryClientProvider>
   );

@@ -83,10 +83,10 @@ class _StoredSession:
     issued_at: float
     expires_at: float
 
-    def public(self) -> SessionRecord:
+    def public(self, capabilities: frozenset[str]) -> SessionRecord:
         return SessionRecord(
             credential_id=self.credential_id,
-            capabilities=_ADMIN_CAPABILITIES,
+            capabilities=capabilities,
             issued_at=self.issued_at,
             expires_at=self.expires_at,
         )
@@ -114,6 +114,9 @@ class AdminSessionStore:
         ws_ticket_ttl_seconds: int = WS_TICKET_TTL_SECONDS,
         max_sessions: int = MAX_ADMIN_SESSIONS,
         max_tickets: int = MAX_WS_TICKETS,
+        session_prefix: str = ADMIN_SESSION_PREFIX,
+        ticket_prefix: str = WS_TICKET_PREFIX,
+        capabilities: frozenset[str] = _ADMIN_CAPABILITIES,
     ) -> None:
         if session_ttl_seconds <= 0 or ws_ticket_ttl_seconds <= 0:
             raise ValueError("credential TTLs must be positive")
@@ -129,6 +132,9 @@ class AdminSessionStore:
         self._ticket_ttl = ws_ticket_ttl_seconds
         self._max_sessions = max_sessions
         self._max_tickets = max_tickets
+        self._session_prefix = session_prefix
+        self._ticket_prefix = ticket_prefix
+        self._capabilities = capabilities
         self._sessions: OrderedDict[str, _StoredSession] = OrderedDict()
         self._tickets: OrderedDict[str, _StoredTicket] = OrderedDict()
         self._ticket_hashes_by_session: dict[str, set[str]] = {}
@@ -245,7 +251,7 @@ class AdminSessionStore:
             wall_now = self._wall_time()
             self._purge_locked(now)
             self._evict_sessions_locked()
-            token, token_hash = self._new_token_locked(ADMIN_SESSION_PREFIX, self._sessions)
+            token, token_hash = self._new_token_locked(self._session_prefix, self._sessions)
             expires_monotonic = now + self._session_ttl
             expires_at = wall_now + self._session_ttl
             self._sessions[token_hash] = _StoredSession(
@@ -258,7 +264,7 @@ class AdminSessionStore:
             return IssuedSession(token=token, expires_at=expires_at)
 
     def resolve(self, token: str | None, api_key: str | None) -> SessionRecord | None:
-        if not self._valid_token(token, ADMIN_SESSION_PREFIX):
+        if not self._valid_token(token, self._session_prefix):
             return None
         assert isinstance(token, str)
         with self._lock:
@@ -269,10 +275,10 @@ class AdminSessionStore:
             record = self._sessions.get(_hash_token(token, self._pepper))
             if record is None or now >= record.expires_monotonic:
                 return None
-            return record.public()
+            return record.public(self._capabilities)
 
     def revoke(self, token: str | None) -> bool:
-        if not self._valid_token(token, ADMIN_SESSION_PREFIX):
+        if not self._valid_token(token, self._session_prefix):
             return False
         assert isinstance(token, str)
         token_hash = _hash_token(token, self._pepper)
@@ -293,7 +299,7 @@ class AdminSessionStore:
     ) -> IssuedTicket:
         if path not in _ALLOWED_WS_PATHS:
             raise ValueError("WebSocket path is not allowed")
-        if not self._valid_token(session_token, ADMIN_SESSION_PREFIX):
+        if not self._valid_token(session_token, self._session_prefix):
             raise PermissionError("valid admin session required")
         assert isinstance(session_token, str)
         session_hash = _hash_token(session_token, self._pepper)
@@ -318,7 +324,7 @@ class AdminSessionStore:
             if session is None or now >= session.expires_monotonic:
                 raise PermissionError("valid admin session required")
             self._evict_tickets_locked()
-            token, token_hash = self._new_token_locked(WS_TICKET_PREFIX, self._tickets)
+            token, token_hash = self._new_token_locked(self._ticket_prefix, self._tickets)
             expires_at = self._wall_time() + self._ticket_ttl
             self._tickets[token_hash] = _StoredTicket(
                 session_hash=credential_id,
@@ -337,7 +343,7 @@ class AdminSessionStore:
         path: str,
         api_key: str | None,
     ) -> SessionRecord | None:
-        if not self._valid_token(ticket_token, WS_TICKET_PREFIX):
+        if not self._valid_token(ticket_token, self._ticket_prefix):
             return None
         assert isinstance(ticket_token, str)
         with self._lock:
@@ -353,7 +359,7 @@ class AdminSessionStore:
             session = self._sessions.get(ticket.session_hash)
             if session is None or now >= session.expires_monotonic:
                 return None
-            return session.public()
+            return session.public(self._capabilities)
 
     def clear(self) -> None:
         with self._lock:

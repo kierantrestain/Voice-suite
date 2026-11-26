@@ -4,9 +4,10 @@
   "installCommand": "bun install --frozen-lockfile --ignore-scripts",
   "buildCommand": "cd electron && VOICE_SUITE_HOSTED=1 bun run build:web",
   "outputDirectory": "frontend/dist",
+  "functions": { "api/cloud.mjs": { "maxDuration": 60 } },
   "cleanUrls": false,
   "trailingSlash": false,
-  "rewrites": [{ "source": "/((?!assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!api/|assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",

@@ -38,6 +38,14 @@ interface Report {
   }[];
   warnings: StorageWarning[];
 }
+const storageLabels: Record<string, string> = {
+  desktop_app: 'studioSetup.app',
+  runtime: 'studioSetup.runtime',
+  runtime_cache: 'studioSetup.installerCache',
+  workspace_cache: 'studioSetup.workspaceCache',
+  projects: 'projects.title',
+};
+
 export function StorageSettings() {
   const { t } = useTranslation();
   const client = useQueryClient();
@@ -102,7 +110,7 @@ export function StorageSettings() {
         )}
         {(query.isError || action.error) && (
           <p role="alert" className="p-4 text-sm text-destructive">
-            {t('common.error')}{' '}
+            {action.error || t('tts_errors.backend_unreachable')}{' '}
             <Button size="sm" variant="ghost" onClick={() => void query.refetch()}>
               {t('common.retry')}
             </Button>
@@ -145,8 +153,10 @@ export function StorageSettings() {
         {query.data?.categories.map((category) => (
           <div key={category.id} className="space-y-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">{t('settings.storage_cat_' + category.id)}</h3>
-              <span className="text-sm tabular-nums">
+              <h3 className="text-sm font-medium">
+                {t(storageLabels[category.id] ?? 'settings.storage_cat_' + category.id)}
+              </h3>
+              <span className="text-sm tabular-nums" title={category.bytes.toLocaleString() + ' B'}>
                 {fmtBytes(category.bytes)}{' '}
                 {category.complete === false && (
                   <span className="text-xs text-muted-foreground">
@@ -195,13 +205,22 @@ export function StorageSettings() {
             {category.items?.length || category.children?.length ? (
               <details className="text-sm">
                 <summary className="cursor-pointer text-muted-foreground">
-                  {t(category.id === 'hf_cache' ? 'settings.storage_top_models' : 'common.details')}
+                  {t(
+                    category.id === 'hf_cache'
+                      ? 'settings.storage_manage_models'
+                      : 'common.details',
+                  )}
                 </summary>
                 <ul className="mt-2 space-y-2">
                   {category.items?.map((item) => (
                     <li key={item.name} className="flex justify-between gap-3 text-xs">
                       <span className="break-all">{item.name}</span>
-                      <span className="shrink-0 tabular-nums">{fmtBytes(item.bytes)}</span>
+                      <span
+                        className="shrink-0 tabular-nums"
+                        title={item.bytes.toLocaleString() + ' B'}
+                      >
+                        {fmtBytes(item.bytes)}
+                      </span>
                     </li>
                   ))}
                   {category.children?.map((child) => (
@@ -209,7 +228,9 @@ export function StorageSettings() {
                       key={child.id}
                       className="flex flex-wrap items-center justify-between gap-3 text-xs"
                     >
-                      <span>{t('settings.storage_child_' + child.id)}</span>
+                      <span>
+                        {t(storageLabels[child.id] ?? 'settings.storage_child_' + child.id)}
+                      </span>
                       <span className="tabular-nums">
                         {fmtBytes(child.bytes)}{' '}
                         {child.complete === false && t('settings.storage_partial')}
@@ -264,7 +285,7 @@ export function StorageSettings() {
             t('common.loading')
           ) : backup.isError ? (
             <p role="alert">
-              {t('common.error')}{' '}
+              {action.error || t('tts_errors.backend_unreachable')}{' '}
               <Button size="sm" variant="ghost" onClick={() => void backup.refetch()}>
                 {t('common.retry')}
               </Button>

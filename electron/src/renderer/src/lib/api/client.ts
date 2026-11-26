@@ -14,7 +14,7 @@ import {
   isSameOriginApi,
 } from '@shared/api/authSession';
 import { joinApiPath } from '../../../../shared/web-api-routing';
-import { HOSTED_FRONTEND, hostedBackendUrl } from '@/lib/hosted-backend';
+import { HOSTED_FRONTEND, hostedBackendUrl, hostedRequestInit } from '@/lib/hosted-backend';
 import {
   announceModelLicenceRequired,
   modelLicenceRequirements,
@@ -242,7 +242,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       if (pin) headers.set('X-OmniVoice-Pin', pin);
       if (sentSession) headers.set('Authorization', `Bearer ${sentSession.token}`);
       if (isSameOriginApi(apiBase)) headers.set(CSRF_HEADER_NAME, '1');
-      init = { ...init, headers, credentials: 'include' };
+      init = HOSTED_FRONTEND
+        ? { ...init, ...hostedRequestInit(apiBase), headers }
+        : { ...init, headers, credentials: 'include' };
     }
     res = await fetch(apiPath(path), init);
   } catch (err) {

@@ -170,13 +170,13 @@ def test_missing_dirs_are_zero_not_warnings(tmp_path):
     assert not [w for w in r["warnings"] if w["kind"] == "unreadable"]
 
 
-def test_top_models_capped_at_ten(roots, tmp_path):
+def test_report_lists_every_cached_model(roots, tmp_path):
     hub = tmp_path / "hf" / "hub"
     for i in range(15):
         _write(str(hub / f"models--Org--M{i:02d}" / "w.bin"), 10 + i)
     r = _build(roots)
     items = _cat(r, "hf_cache")["items"]
-    assert len(items) == storage_report.TOP_MODEL_COUNT
+    assert {item["name"] for item in items} >= {f"Org/M{i:02d}" for i in range(15)}
     assert items == sorted(items, key=lambda m: m["bytes"], reverse=True)
 
 

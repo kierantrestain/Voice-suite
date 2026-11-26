@@ -16,6 +16,7 @@ import { checkSetupConnection, setupProbeUrl } from './setup-connection-check';
 import { downloadProxyEnv } from './proxy-env';
 import {
   installRuntime,
+  discardRuntimeInstallFiles,
   MISSING_SYSTEM_LIBRARY_CODE,
   OUTDATED_SYSTEM_LIBRARY_CODE,
   TORCH_DLL_INIT_FAILED_CODE,
@@ -1681,6 +1682,12 @@ export class BackendSupervisor extends EventEmitter<{
         this.runtimeInterrupted = false;
         await stageRuntimeSources(backendRoot(), project);
         if (gen !== this.generation) return;
+        const selectedRoot = storedRuntimeRoot() || defaultRuntimeRoot();
+        if (process.platform === 'darwin' && samePath(project, join(selectedRoot, 'project'))) {
+          // A compatible owned runtime has just passed its dependency checks.
+          // Legacy runtimes in another app's directory keep their own caches.
+          void discardRuntimeInstallFiles(project).catch(() => undefined);
+        }
       }
       // Explicit ports/custom commands are contracts with external callers. Only
       // the default managed launch may move away from an OS-reserved port.
@@ -1978,10 +1985,10 @@ export class BackendSupervisor extends EventEmitter<{
                   : code === TORCH_DLL_INIT_FAILED_CODE
                     ? 'torch_dll_init_failed'
                     : code === RUNTIME_FILES_LOCKED_CODE
-                    ? 'files_locked'
-                    : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
-                      ? 'access'
-                      : undefined;
+                      ? 'files_locked'
+                      : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
+                        ? 'access'
+                        : undefined;
         this.setupRequiredGib =
           code === 'ENOSPC' ? (error as { requiredGib?: number }).requiredGib : undefined;
         this.runtimeRepairFailed = this.repairAttempted;
@@ -2662,6 +2669,16 @@ export class BackendSupervisor extends EventEmitter<{
     console.log(`[backend] spawning in ${plan.cwd}: ${plan.argv.join(' ')}`);
     let child: ChildProcess;
     const processOptions = managedBackendSpawnOptions(this.port, this.runtimeRegion);
+    if (app.isPackaged && runtimeOwned && process.resourcesPath) {
+      processOptions.env.VOICE_SUITE_APP_ROOT =
+        process.platform === 'darwin'
+          ? dirname(dirname(process.resourcesPath))
+          : dirname(process.resourcesPath);
+      processOptions.env.VOICE_SUITE_PROFILE_ROOT = app.getPath('userData');
+      if (this.runtimeProject && samePath(plan.cwd, this.runtimeProject)) {
+        processOptions.env.VOICE_SUITE_RUNTIME_ROOT = dirname(plan.cwd);
+      }
+    }
     const fallback = applyWeightLoadFallback(processOptions.env, this.crashes.all());
     if (fallback) {
       console.log(`[backend] ${fallback}`);

@@ -1925,7 +1925,7 @@ def _is_public_path(path: str) -> bool:
         path in _SHELL_PATHS
         or path.startswith("/assets/")
         or path.startswith("/favicon")
-        or path == "/api/auth/session"
+        or path in {"/api/auth/session", "/api/auth/studio/redeem"}
     )
 
 # Paths that answer while deferred startup is still running. The shutdown
@@ -2017,7 +2017,7 @@ class NetworkAccessMiddleware:
         request = Request(scope, receive=receive)
         ns = getattr(request.app.state, "network_share", None)
         pin = getattr(ns, "pin", None) if ns else None
-        if not pin:
+        if not pin or principal_for(request).kind is PrincipalKind.STUDIO_SESSION:
             return await self.app(scope, receive, send)
         client = scope["client"][0] if scope.get("client") else None
         from core.auth import is_delegated_consumer
@@ -2134,29 +2134,45 @@ class BearerKeyMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
-        key = remote_api_key() or ""
-        if not key:
-            return await self.app(scope, receive, send)
-        if scope["type"] == "http" and _is_public_path(scope.get("path", "")):
-            return await self.app(scope, receive, send)
-
         from starlette.requests import HTTPConnection
+        from services.studio_sessions import desktop_pair_origin, studio_access_allowed
+        from starlette.routing import get_route_path
 
         conn = HTTPConnection(scope)
+        paired_origin = desktop_pair_origin()
+        paired_browser = bool(paired_origin and conn.headers.get("origin") == paired_origin)
+        if scope["type"] == "http" and _is_public_path(scope.get("path", "")):
+            return await self.app(scope, receive, send)
+        if not remote_api_key() and not paired_browser and not scope.get("_studio_transport"):
+            return await self.app(scope, receive, send)
+
         principal = principal_for(conn)
-        if principal.kind not in {
-            PrincipalKind.LOOPBACK,
-            PrincipalKind.TRUSTED_NETWORK,
-            PrincipalKind.API_KEY,
-            PrincipalKind.ADMIN_SESSION,
-        }:
+        allowed = (
+            {PrincipalKind.STUDIO_SESSION} if paired_browser else {
+                PrincipalKind.LOOPBACK,
+                PrincipalKind.TRUSTED_NETWORK,
+                PrincipalKind.API_KEY,
+                PrincipalKind.ADMIN_SESSION,
+                PrincipalKind.STUDIO_SESSION,
+            }
+        )
+        if principal.kind not in allowed:
             if scope["type"] == "websocket":
-                # Reject the handshake; 1008 = policy violation.
-                await receive()  # consume websocket.connect
+                await receive()
                 await send({"type": "websocket.close", "code": 1008})
                 return
-            resp = JSONResponse({"detail": "API key required"}, status_code=401)
-            return await resp(scope, receive, send)
+            detail = "Desktop pairing required" if paired_browser else "API key required"
+            return await JSONResponse({"detail": detail}, status_code=401)(scope, receive, send)
+        if principal.kind is PrincipalKind.STUDIO_SESSION:
+            method = scope.get("method", "WEBSOCKET")
+            if not studio_access_allowed(method, get_route_path(scope)):
+                if scope["type"] == "websocket":
+                    await receive()
+                    return await send({"type": "websocket.close", "code": 1008})
+                return await JSONResponse(
+                    {"detail": "Manage this feature in the Voice Suite desktop app"},
+                    status_code=403,
+                )(scope, receive, send)
         if (
             scope["type"] == "http"
             and str(scope.get("method", "GET")).upper() not in SAFE_HTTP_METHODS
@@ -2191,6 +2207,7 @@ class BearerKeyMiddleware:
 from core.csrf import CORS_EXPOSED_HEADERS, allowed_origin_values, ui_port as _ui_port
 
 _allowed = allowed_origin_values()
+from services.studio_sessions import desktop_pair_origin
 
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -2293,6 +2310,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed,
     allow_credentials=True,
+    allow_private_network=bool(desktop_pair_origin()),
     allow_methods=["*"],
     allow_headers=["*"],
     # The marker must be readable cross-origin too — a browser UI served from
