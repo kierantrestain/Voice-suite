@@ -113,7 +113,7 @@ def _prepare(release, monkeypatch, tmp_path, changelog, **kwargs):
     assets = tmp_path / "assets"
     assets.mkdir(exist_ok=True)
     for suffix in ("mac-arm64.dmg", "mac-x64.dmg", "linux-x64.deb"):
-        (assets / f"VoiceStudio-1.2.3-beta.1-{suffix}").write_bytes(b"x")
+        (assets / f"Voice-Suite-1.2.3-beta.1-{suffix}").write_bytes(b"x")
     release.prepare(assets, "v1.2.3-beta.1", **kwargs)
     return (assets / "RELEASE_NOTES.md").read_text(encoding="utf-8")
 
@@ -233,7 +233,7 @@ def test_prepare_writes_its_outputs_when_credits_fail(release, monkeypatch, tmp_
     )
     assets = tmp_path / "assets"
     assets.mkdir()
-    installer = assets / "VoiceStudio-0.5.9-mac-arm64.dmg"
+    installer = assets / "Voice-Suite-0.5.9-mac-arm64.dmg"
     installer.write_bytes(b"installer")
 
     monkeypatch.setattr(release, "verify_release", lambda *args, **kwargs: None)
@@ -250,6 +250,6 @@ def test_prepare_writes_its_outputs_when_credits_fail(release, monkeypatch, tmp_
     assert "A fix (#1)" in notes
     assert "Contributors" not in notes
     sums = (assets / "SHA256SUMS.txt").read_text(encoding="utf-8")
-    assert "VoiceStudio-0.5.9-mac-arm64.dmg" in sums
+    assert "Voice-Suite-0.5.9-mac-arm64.dmg" in sums
     assert "Contributors section skipped" in capsys.readouterr().err
     assert "installer mac-x64.dmg" in missing

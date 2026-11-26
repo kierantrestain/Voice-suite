@@ -2712,6 +2712,7 @@
     "error_install": "Das Update konnte nicht installiert werden.",
     "error_not_applied": "Update {{version}} wurde nicht übernommen.",
     "download_manually": "Manuell herunterladen",
+    "manual_install_hint": "Dieser Build ist noch nicht mit einer Apple-Entwickler-ID signiert und kann Updates daher nicht selbst installieren. Lade die neue Version von ihrer Release-Seite herunter.",
     "view_release": "Release auf GitHub ansehen",
     "auto_download": "Updates automatisch herunterladen",
     "auto_download_hint": "Updates werden im Hintergrund geladen und beim Beenden installiert.",

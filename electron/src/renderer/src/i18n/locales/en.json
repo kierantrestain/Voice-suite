@@ -2799,6 +2799,7 @@
     "error_install": "The update couldn't be installed.",
     "error_not_applied": "Update {{version}} did not apply.",
     "download_manually": "Download manually",
+    "manual_install_hint": "This build isn't signed with an Apple Developer ID yet, so it can't install updates itself. Download the new version from its release page.",
     "view_release": "View release on GitHub",
     "auto_download": "Download updates automatically",
     "auto_download_hint": "Updates download in the background and install when you quit.",

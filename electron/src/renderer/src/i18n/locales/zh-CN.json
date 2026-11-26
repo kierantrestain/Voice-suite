@@ -2708,6 +2708,7 @@
     "error_install": "无法安装更新。",
     "error_not_applied": "更新 {{version}} 未生效。",
     "download_manually": "手动下载",
+    "manual_install_hint": "此版本尚未使用 Apple 开发者 ID 签名，因此无法自行安装更新。请从发布页面下载新版本。",
     "view_release": "在 GitHub 上查看版本",
     "auto_download": "自动下载更新",
     "auto_download_hint": "更新会在后台下载，并在退出时安装。",

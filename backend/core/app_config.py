@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,11 @@ if not isinstance(_PORTS, dict):
 
 PRODUCT_NAME = _required_string(_RAW.get("productName"), "productName")
 APP_ID = _required_string(_RAW.get("appId"), "appId")
+RELEASE_REPOSITORY = _required_string(_RAW.get("releaseRepository"), "releaseRepository")
+if not re.fullmatch(r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+", RELEASE_REPOSITORY):
+    raise TypeError("config/app.json: releaseRepository must be a GitHub owner/name")
+# Direct downloads are `<prefix>-<version>-<os>-<arch>.<ext>` (electron-builder.config.mjs).
+ARTIFACT_PREFIX = re.sub(r"[^A-Za-z0-9]+", "-", PRODUCT_NAME)
 DEFAULT_BACKEND_PORT = _required_port(_PORTS.get("backend"), "backend")
 DEFAULT_WEB_PORT = _required_port(_PORTS.get("web"), "web")
 DEFAULT_ELECTRON_DEV_PORT = _required_port(_PORTS.get("electronDev"), "electronDev")

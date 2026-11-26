@@ -60,3 +60,20 @@ def test_the_product_and_artifact_names_are_voicestudio():
     assert config["productName"] == "Voice Suite"
     assert "productName: PRODUCT_NAME" in builder
     assert "artifactPrefix" in builder
+
+
+def test_no_user_data_is_located_by_the_bundle_id():
+    """Voice Suite's own appId replaced upstream's com.voicestudio.desktop.
+
+    That is safe only while nothing that holds user data derives from it:
+    Electron's userData comes from the product name, the backend data
+    directory from backend/core/config.py, and the runtime from userData.
+    """
+    builder = _read("electron/electron-builder.config.mjs")
+    assert "productName: PRODUCT_NAME" in builder and "desktopName: PRODUCT_NAME" in builder
+    main = _read("electron/src/main/index.ts") + _read("electron/src/main/backend.ts")
+    assert "setPath('userData'" not in main and 'setPath("userData"' not in main
+    for source in ("electron/src/main/backend.ts", "backend/core/config.py"):
+        text = _read(source)
+        assert not re.search(r"\bAPP_ID\b|\bappId\b", text), source
+    assert "com.voicestudio.desktop" not in _read("config/app.json")

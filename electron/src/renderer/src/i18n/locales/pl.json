@@ -2738,6 +2738,7 @@
     "error_install": "Nie udało się zainstalować aktualizacji.",
     "error_not_applied": "Aktualizacja {{version}} nie została zastosowana.",
     "download_manually": "Pobierz ręcznie",
+    "manual_install_hint": "Ta kompilacja nie jest jeszcze podpisana identyfikatorem Apple Developer ID, więc nie może sama instalować aktualizacji. Pobierz nową wersję ze strony wydania.",
     "view_release": "Zobacz wydanie na GitHubie",
     "auto_download": "Pobieraj aktualizacje automatycznie",
     "auto_download_hint": "Aktualizacje pobierają się w tle i instalują przy zamknięciu.",

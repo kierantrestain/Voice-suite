@@ -16,7 +16,8 @@ test('keeps direct Linux packaging and its updater unchanged', () => {
   assert.equal(packaging.snapcraft, undefined);
   assert.deepEqual(packaging.publish, {
     provider: 'generic',
-    url: 'https://github.com/debpalash/VoiceStudio/releases/latest/download',
+    // Voice Suite's own releases; never upstream VoiceStudio's feed.
+    url: 'https://github.com/kierantrestain/Voice-suite/releases/latest/download',
     channel: `electron-stable-${process.platform}-${process.arch}`,
     // GitHub release downloads reject multi-range requests; patch updates need single ranges.
     useMultipleRangeRequest: false,

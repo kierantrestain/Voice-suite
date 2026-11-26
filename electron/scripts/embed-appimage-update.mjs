@@ -12,8 +12,10 @@ import { inflateRawSync } from 'node:zlib';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const releaseDir = resolve(root, process.argv[2] || 'release');
 const version = JSON.parse(readFileSync(resolve(root, '../package.json'), 'utf8')).version;
-const productName = JSON.parse(readFileSync(resolve(root, '../config/app.json'), 'utf8')).productName;
-const artifactPrefix = productName.replace(/[^A-Za-z0-9]+/g, '-');
+const appConfig = JSON.parse(readFileSync(resolve(root, '../config/app.json'), 'utf8'));
+const artifactPrefix = appConfig.productName.replace(/[^A-Za-z0-9]+/g, '-');
+// AppImageUpdate and zsync follow this product's own releases, never upstream's.
+const [releaseOwner, releaseRepo] = appConfig.releaseRepository.split('/');
 const filename = `${artifactPrefix}-${version}-linux-x64.AppImage`;
 const image = resolve(releaseDir, filename);
 const zsync = `${image}.zsync`;
@@ -27,7 +29,7 @@ assert(
 const isBeta = channel === 'electron-beta-linux-x64';
 const releaseTag = `v${version}`;
 const manifestPath = resolve(releaseDir, `${channel}-linux.yml`);
-const updateInfo = `gh-releases-zsync|debpalash|VoiceStudio|${
+const updateInfo = `gh-releases-zsync|${releaseOwner}|${releaseRepo}|${
   isBeta ? releaseTag : 'latest'
 }|${artifactPrefix}-*-linux-x64.AppImage.zsync`;
 
@@ -95,7 +97,7 @@ const { appendBlockmap } = require(
 const { size, sha512, blockMapSize } = await appendBlockmap(image);
 assert.equal((await stat(image)).size, size);
 
-const url = `https://github.com/debpalash/VoiceStudio/releases/download/${releaseTag}/${filename}`;
+const url = `https://github.com/${releaseOwner}/${releaseRepo}/releases/download/${releaseTag}/${filename}`;
 execFileSync('zsyncmake', ['-u', url, '-o', zsync, image], { stdio: 'inherit' });
 
 const manifest = readFileSync(manifestPath, 'utf8');

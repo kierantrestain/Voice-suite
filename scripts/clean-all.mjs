@@ -26,9 +26,12 @@ export function appDataPaths({ home = homedir(), platform = process.platform, en
       for (const base of ['Application Support', 'Caches', 'Logs'])
         paths.push(join(home, 'Library', base, name));
     }
-    paths.push(join(home, 'Library/Caches/com.voicestudio.desktop'));
-    paths.push(join(home, 'Library/Preferences/com.voicestudio.desktop.plist'));
-    paths.push(join(home, 'Library/Saved Application State/com.voicestudio.desktop.savedState'));
+    // Voice Suite's bundle id, and upstream VoiceStudio's (shared until v0.6.0).
+    for (const id of ['io.github.kierantrestain.voicesuite', 'com.voicestudio.desktop']) {
+      paths.push(join(home, `Library/Caches/${id}`));
+      paths.push(join(home, `Library/Preferences/${id}.plist`));
+      paths.push(join(home, `Library/Saved Application State/${id}.savedState`));
+    }
   } else if (platform === 'win32') {
     const roaming = env.APPDATA || join(home, 'AppData/Roaming');
     const local = env.LOCALAPPDATA || join(home, 'AppData/Local');

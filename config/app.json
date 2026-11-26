@@ -1,6 +1,7 @@
 {
   "productName": "Voice Suite",
-  "appId": "com.voicestudio.desktop",
+  "appId": "io.github.kierantrestain.voicesuite",
+  "releaseRepository": "kierantrestain/Voice-suite",
   "ports": {
     "backend": 3900,
     "web": 3901,

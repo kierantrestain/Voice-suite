@@ -201,6 +201,11 @@ export interface UpdateState {
   installOnQuit?: boolean;
   /** The version the user chose "Later" for; it still installs on quit. */
   dismissedVersion?: string;
+  /**
+   * This install cannot replace itself (an unsigned macOS build): a found
+   * update is downloaded from its release page instead of in the app.
+   */
+  manualInstall?: boolean;
 }
 export interface UpdateReleaseInfo {
   version: string;

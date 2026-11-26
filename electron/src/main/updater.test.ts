@@ -6,8 +6,15 @@ const mocks = vi.hoisted(() => {
   const appHandlers = new Map<string, (...args: any[]) => void>();
   // updates.json holds the saved update channel ("preview" is a retired value).
   const disk = { file: undefined as string | undefined };
+  // The packaged package.json: signed with a Developer ID unless a test says
+  // otherwise, so the suite behaves the same on macOS, Windows and Linux.
+  const packaged = { metadata: '{"voicesuiteMacSigning":"developer-id"}' as string | undefined };
   const fs = {
-    readFileSync: vi.fn((_path: string) => {
+    readFileSync: vi.fn((path: string) => {
+      if (String(path).endsWith('package.json')) {
+        if (packaged.metadata === undefined) throw new Error('ENOENT');
+        return packaged.metadata;
+      }
       if (disk.file === undefined) throw new Error('ENOENT');
       return disk.file;
     }),
@@ -50,10 +57,12 @@ const mocks = vi.hoisted(() => {
         appHandlers.set(event, listener);
       }),
       getPath: vi.fn(() => 'C:\\VoiceStudio-test'),
+      getAppPath: vi.fn(() => '/Applications/Voice Suite.app/Contents/Resources/app.asar'),
     },
     autoUpdater,
     appHandlers,
     disk,
+    packaged,
     fs,
     handlers,
     ipcHandlers,
@@ -89,13 +98,16 @@ import {
   isTransientUpdateError,
   feedManifestName,
   listDesktopReleases,
+  readMacSigning,
   readSavedUpdateChannel,
   registerUpdateIpc,
   releaseSize,
   resolveBetaFeed,
   resolveUpdateFeedUrl,
   UPDATE_CHANNELS,
+  UPDATE_FEED_URLS,
   updatePayloadExtension,
+  updatesNeedManualInstall,
 } from './updater';
 import { GitHubAssetProvider } from './github-asset-provider';
 
@@ -134,7 +146,7 @@ describe('DesktopUpdater', () => {
     expect(mocks.autoUpdater.channel).toBe(`electron-stable-${process.platform}-${process.arch}`);
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/debpalash/VoiceStudio/releases/latest/download',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/latest/download',
       channel: `electron-stable-${process.platform}-${process.arch}`,
       useMultipleRangeRequest: false,
     });
@@ -178,7 +190,7 @@ describe('DesktopUpdater', () => {
     expect(mocks.autoUpdater.channel).toBe(channel);
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/download/v0.5.7',
       channel,
       useMultipleRangeRequest: false,
     });
@@ -297,7 +309,7 @@ describe('DesktopUpdater', () => {
     expect(mocks.autoUpdater.channel).toBe(`electron-beta-${platform}-${arch}`);
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/debpalash/VoiceStudio/releases/download/v0.5.9-beta.10',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/download/v0.5.9-beta.10',
       channel: `electron-beta-${platform}-${arch}`,
       useMultipleRangeRequest: false,
     });
@@ -321,7 +333,7 @@ describe('DesktopUpdater', () => {
       ),
     );
     expect(feed).toMatchObject({
-      url: 'https://github.com/debpalash/VoiceStudio/releases/download/v0.5.9',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/download/v0.5.9',
       channel: `electron-stable-${process.platform}-${process.arch}`,
       tag: 'v0.5.9',
     });
@@ -631,9 +643,9 @@ describe('DesktopUpdater', () => {
       },
     ]);
     expect(fetcher).toHaveBeenCalledWith(
-      expect.stringContaining('/debpalash/VoiceStudio/releases?per_page=30'),
+      expect.stringContaining('/kierantrestain/Voice-suite/releases?per_page=30'),
       expect.objectContaining({
-        headers: expect.objectContaining({ 'User-Agent': 'VoiceStudio' }),
+        headers: expect.objectContaining({ 'User-Agent': 'Voice-Suite' }),
         signal: expect.any(AbortSignal),
       }),
     );
@@ -717,12 +729,12 @@ describe('release-download outage fallback', () => {
     // One API request per fallback check.
     expect(feedFetcher).toHaveBeenCalledOnce();
     expect(feedFetcher.mock.calls[0][0]).toBe(
-      'https://api.github.com/repos/debpalash/VoiceStudio/releases/latest',
+      'https://api.github.com/repos/kierantrestain/Voice-suite/releases/latest',
     );
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'custom',
       updateProvider: GitHubAssetProvider,
-      url: 'https://github.com/debpalash/VoiceStudio/releases/download/v0.5.9',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/download/v0.5.9',
       channel,
       assets: { [manifest]: 11, 'VoiceStudio-0.5.9.zip': 12 },
       payloadExtension: updatePayloadExtension(),
@@ -733,7 +745,7 @@ describe('release-download outage fallback', () => {
     await updater.check();
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/debpalash/VoiceStudio/releases/latest/download',
+      url: 'https://github.com/kierantrestain/Voice-suite/releases/latest/download',
       channel,
       useMultipleRangeRequest: false,
     });
@@ -772,7 +784,7 @@ describe('release-download outage fallback', () => {
     expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith(
       expect.objectContaining({
         provider: 'custom',
-        url: 'https://github.com/debpalash/VoiceStudio/releases/download/v0.5.9-beta.1',
+        url: 'https://github.com/kierantrestain/Voice-suite/releases/download/v0.5.9-beta.1',
         assets: { [beta]: 21 },
       }),
     );
@@ -1340,5 +1352,105 @@ describe('update error classification', () => {
     expect(compareAppVersions('0.5.8-beta.3', '0.5.8')).toBe(-1);
     expect(compareAppVersions('0.5.8', '0.5.8')).toBe(0);
     expect(compareAppVersions('0.5.9', '0.5.8')).toBe(1);
+  });
+});
+
+describe('Voice Suite update destinations', () => {
+  test('every feed is this repository, never upstream VoiceStudio', () => {
+    expect(UPDATE_FEED_URLS).toEqual({
+      stable: 'https://github.com/kierantrestain/Voice-suite/releases/latest/download',
+      releases: 'https://api.github.com/repos/kierantrestain/Voice-suite/releases?per_page=30',
+      latest: 'https://api.github.com/repos/kierantrestain/Voice-suite/releases/latest',
+      download: 'https://github.com/kierantrestain/Voice-suite/releases/download',
+    });
+    for (const url of Object.values(UPDATE_FEED_URLS))
+      expect(url).not.toMatch(/debpalash|VoiceStudio/i);
+  });
+
+  test('the packaged feed is configured on this repository from the first launch', () => {
+    vi.clearAllMocks();
+    mocks.app.isPackaged = true;
+    new DesktopUpdater('direct', vi.fn(), [], 1_000, () => false);
+    expect(mocks.autoUpdater.setFeedURL).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        provider: 'generic',
+        url: 'https://github.com/kierantrestain/Voice-suite/releases/latest/download',
+      }),
+    );
+  });
+});
+
+describe('unsigned macOS builds update from the release page', () => {
+  const offer = (version = '0.6.1') =>
+    mocks.autoUpdater.checkForUpdates.mockImplementation(async () => {
+      emit('update-available', { version, releaseNotes: 'Notes' });
+      return { isUpdateAvailable: true, updateInfo: { version } };
+    });
+
+  beforeEach(() => {
+    mocks.handlers.clear();
+    mocks.disk.file = undefined;
+    mocks.packaged.metadata = '{"voicesuiteMacSigning":"developer-id"}';
+    mocks.app.isPackaged = true;
+    vi.clearAllMocks();
+    mocks.autoUpdater.checkForUpdates.mockResolvedValue(undefined);
+    mocks.autoUpdater.downloadUpdate.mockResolvedValue(undefined);
+  });
+
+  test('only an ad hoc (or unstamped) macOS build needs a manual install', () => {
+    expect(updatesNeedManualInstall('darwin', () => 'adhoc')).toBe(true);
+    expect(updatesNeedManualInstall('darwin', () => 'developer-id')).toBe(false);
+    // Windows and Linux verify the SHA-512 from the same release and install in place.
+    expect(updatesNeedManualInstall('win32', () => 'adhoc')).toBe(false);
+    expect(updatesNeedManualInstall('linux', () => 'adhoc')).toBe(false);
+  });
+
+  test('reads the signing stamp electron-builder writes into the packaged package.json', () => {
+    expect(readMacSigning('/app.asar')).toBe('developer-id');
+    mocks.packaged.metadata = '{"voicesuiteMacSigning":"adhoc"}';
+    expect(readMacSigning('/app.asar')).toBe('adhoc');
+    // A build without the stamp is treated as unsigned: Squirrel would reject it.
+    mocks.packaged.metadata = '{"name":"voicestudio-electron"}';
+    expect(readMacSigning('/app.asar')).toBe('adhoc');
+    mocks.packaged.metadata = undefined;
+    expect(readMacSigning('/app.asar')).toBe('adhoc');
+  });
+
+  test('a found update is offered for the release page and never downloaded or installed', async () => {
+    // Automatic downloads were on; Squirrel.Mac would reject the update after downloading it.
+    mocks.disk.file = '{"autoDownload":true}';
+    const updater = new DesktopUpdater('direct', vi.fn(), [], 1_000, () => true);
+    expect(updater.snapshot()).toMatchObject({
+      status: 'idle',
+      manualInstall: true,
+      autoDownload: false,
+      installOnQuit: false,
+    });
+    expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(false);
+    offer();
+
+    expect(await updater.checkInBackground()).toBe(true);
+    expect(updater.snapshot()).toMatchObject({
+      status: 'available',
+      availableVersion: '0.6.1',
+      manualInstall: true,
+    });
+    expect((await updater.download()).status).toBe('available');
+    updater.setAutoDownload(true);
+    await Promise.resolve();
+    expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled();
+    updater.install();
+    expect(mocks.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+    // The flag survives the state resets of Dismiss and a channel switch.
+    updater.setChannel('beta');
+    expect(updater.snapshot()).toMatchObject({ status: 'idle', manualInstall: true });
+  });
+
+  test('a signed build keeps downloading in the background', async () => {
+    const updater = new DesktopUpdater('direct', vi.fn(), [], 1_000, () => false);
+    expect(updater.snapshot().manualInstall).toBeUndefined();
+    offer();
+    await updater.checkInBackground();
+    expect(mocks.autoUpdater.downloadUpdate).toHaveBeenCalledOnce();
   });
 });

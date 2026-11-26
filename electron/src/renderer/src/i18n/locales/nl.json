@@ -2712,6 +2712,7 @@
     "error_install": "De update kon niet worden geïnstalleerd.",
     "error_not_applied": "Update {{version}} is niet toegepast.",
     "download_manually": "Handmatig downloaden",
+    "manual_install_hint": "Deze build is nog niet ondertekend met een Apple Developer ID en kan updates daarom niet zelf installeren. Download de nieuwe versie via de releasepagina.",
     "view_release": "Release op GitHub bekijken",
     "auto_download": "Updates automatisch downloaden",
     "auto_download_hint": "Updates downloaden op de achtergrond en worden bij afsluiten geïnstalleerd.",

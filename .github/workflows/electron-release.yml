@@ -58,6 +58,11 @@ jobs:
     outputs:
       channel: ${{ steps.channel.outputs.channel }}
       version: ${{ steps.channel.outputs.version }}
+      # File and bundle names come from config/app.json (productName), as
+      # electron-builder.config.mjs spells them: `Voice-Suite-<version>-<os>-<arch>`
+      # and `Voice Suite.app` / `Voice Suite.exe`.
+      artifact_prefix: ${{ steps.channel.outputs.artifact_prefix }}
+      app_name: ${{ steps.channel.outputs.app_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -116,6 +121,8 @@ jobs:
           # for a rehearsal as for a tag.
           echo "channel=$(python3 scripts/prepare_electron_release.py --print-channel)" >> "$GITHUB_OUTPUT"
           echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "app_name=$(node -p "require('./config/app.json').productName")" >> "$GITHUB_OUTPUT"
+          echo "artifact_prefix=$(node -p "require('./config/app.json').productName.replace(/[^A-Za-z0-9]+/g, '-')")" >> "$GITHUB_OUTPUT"
   omnivoice-tts:
     # The OmniVoice GGUF runtime each installer ships under resources/bin (#2780).
     needs: validate
@@ -201,6 +208,8 @@ jobs:
       SIGNPATH_ENABLED: ${{ matrix.platform == 'win32' && secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_SIGNING_POLICY_SLUG != '' && secrets.ELECTRON_WINDOWS_CSC_LINK == '' && (inputs.rehearsal != true || inputs.signpath_policy == 'test-signing') }}
       SIGNPATH_POLICY: ${{ inputs.rehearsal == true && inputs.signpath_policy || vars.SIGNPATH_SIGNING_POLICY_SLUG }}
       ARTIFACT_RETENTION_DAYS: ${{ inputs.rehearsal && 3 || 14 }}
+      ARTIFACT_PREFIX: ${{ needs.validate.outputs.artifact_prefix }}
+      APP_NAME: ${{ needs.validate.outputs.app_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -335,7 +344,7 @@ jobs:
           name: signpath-unsigned-${{ matrix.platform }}-${{ matrix.arch }}
           retention-days: ${{ inputs.rehearsal && 3 || 7 }}
           if-no-files-found: error
-          path: electron/release/VoiceStudio-*.exe
+          path: electron/release/${{ needs.validate.outputs.artifact_prefix }}-*.exe
       - name: Sign the Windows installer with SignPath
         if: env.SIGNPATH_ENABLED == 'true'
         timeout-minutes: 70
@@ -376,7 +385,7 @@ jobs:
             echo "Explicit unsigned macOS publication: no Developer ID is configured"
             exit 0
           fi
-          APP=$(find electron/release -maxdepth 2 -name VoiceStudio.app -type d -print -quit)
+          APP=$(find electron/release -maxdepth 2 -name "$APP_NAME.app" -type d -print -quit)
           test -n "$APP"
           codesign --verify --deep --strict "$APP"
           spctl --assess --type execute --verbose=2 "$APP"
@@ -385,7 +394,7 @@ jobs:
         if: inputs.publish == true && inputs.allow_unsigned != true && matrix.platform == 'win32'
         shell: pwsh
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
+          $installers = @(Get-ChildItem "electron/release/$env:ARTIFACT_PREFIX-*.exe")
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           foreach ($installer in $installers) {
             $signature = Get-AuthenticodeSignature $installer.FullName
@@ -398,8 +407,8 @@ jobs:
         env:
           HAS_CREDENTIALS: ${{ secrets.ELECTRON_MACOS_CSC_LINK != '' }}
         run: |
-          APP=$(find electron/release -maxdepth 2 -name VoiceStudio.app -type d -print -quit)
-          test -n "$APP" || { echo "No VoiceStudio.app to verify"; exit 1; }
+          APP=$(find electron/release -maxdepth 2 -name "$APP_NAME.app" -type d -print -quit)
+          test -n "$APP" || { echo "No $APP_NAME.app to verify"; exit 1; }
           # An invalid bundle signature makes browser downloads open as "damaged".
           codesign --verify --deep --strict "$APP" || { echo "macOS bundle signature is invalid"; exit 1; }
           # stapler validate reaches Apple over the network; retry so a dropped
@@ -427,7 +436,7 @@ jobs:
           HAS_CREDENTIALS: ${{ secrets.ELECTRON_WINDOWS_CSC_LINK != '' || env.SIGNPATH_ENABLED == 'true' }}
           TEST_SIGNED: ${{ env.REHEARSAL == 'true' && env.SIGNPATH_ENABLED == 'true' && env.SIGNPATH_POLICY == 'test-signing' }}
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
+          $installers = @(Get-ChildItem "electron/release/$env:ARTIFACT_PREFIX-*.exe")
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           # A rehearsal's test certificate chains to no trusted root. Accept that
           # one failure only: the signature must be intact (no HashMismatch) and
@@ -475,7 +484,7 @@ jobs:
         working-directory: electron
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            for image in release/VoiceStudio-*-linux-x64.AppImage; do
+            for image in release/"$ARTIFACT_PREFIX"-*-linux-x64.AppImage; do
               VOICESTUDIO_PACKAGED_EXE="electron/$image" xvfb-run -a node tests/packaged-smoke.mjs --setup
             done
           else
@@ -488,14 +497,18 @@ jobs:
           retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
           if-no-files-found: error
           path: |
-            electron/release/VoiceStudio-*
+            electron/release/${{ needs.validate.outputs.artifact_prefix }}-*
             electron/release/electron-*.yml
             electron/release/store-artifact-manifest-*.json
 
   # Both phone apps are required on the same tag as desktop. App Store uploads
   # remain separate; GitHub users sideload the unsigned IPA with their Apple ID.
+  # Voice Suite (this fork) does not ship the phone apps: they are preserved
+  # upstream code, not built, branded or tested for it, so its releases are
+  # desktop-only unless the repository variable RELEASE_PHONE_APPS is "true".
   mobile:
     needs: validate
+    if: github.repository == 'debpalash/VoiceStudio' || vars.RELEASE_PHONE_APPS == 'true'
     # A called job may not ask for more than this grant, even one its `if`
     # skips: mobile-release.yml's mobile-v* release job needs contents: write,
     # and without it GitHub rejects the whole run at startup. Its other jobs
@@ -516,7 +529,8 @@ jobs:
   # ones that did not. A release still needs every leg.
   release:
     needs: [validate, package, mobile]
-    if: ${{ success() || (inputs.rehearsal == true && !cancelled() && needs.validate.result == 'success') }}
+    # A skipped mobile job (a desktop-only release) is not a failure.
+    if: ${{ !cancelled() && needs.validate.result == 'success' && (inputs.rehearsal == true || (needs.package.result == 'success' && (needs.mobile.result == 'success' || needs.mobile.result == 'skipped'))) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -529,6 +543,9 @@ jobs:
       SUNSET_TAG: ${{ vars.TAURI_SUNSET_TAG }}
       PUBLISH: ${{ inputs.publish }}
       CHANNEL: ${{ needs.validate.outputs.channel }}
+      APP_NAME: ${{ needs.validate.outputs.app_name }}
+      # False for a desktop-only release: no phone downloads, rows or dispatches.
+      PHONE_APPS: ${{ needs.mobile.result != 'skipped' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -542,16 +559,19 @@ jobs:
       # matches a single artifact extracts it without the artifact-name folder,
       # which would lose the surviving app when the other phone leg fails.
       - name: Download the Android build
+        if: env.PHONE_APPS == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: VoiceStudio-android-release
           path: phone-assets/VoiceStudio-android-release
       - name: Download the iPhone build
+        if: env.PHONE_APPS == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: VoiceStudio-ios-unsigned
           path: phone-assets/VoiceStudio-ios-unsigned
       - name: Collect phone binaries
+        if: env.PHONE_APPS == 'true'
         run: |
           VERSION="${TAG#v}"
           mkdir -p release-assets
@@ -574,8 +594,11 @@ jobs:
           fi
       - name: Preserve the final Tauri updater feeds
         # Archived Tauri clients read `latest/download`, which never serves a
-        # prerelease, so only Stable releases carry the sunset feeds.
-        if: env.CHANNEL == 'stable'
+        # prerelease, so only Stable releases carry the sunset feeds. They read
+        # upstream's repository only: Voice Suite never shipped a Tauri build,
+        # so its releases carry no sunset feeds (copies here would only point
+        # VoiceStudio payloads at a product nobody installed from this repo).
+        if: env.CHANNEL == 'stable' && github.repository == 'debpalash/VoiceStudio'
         run: |
           test "$SUNSET_TAG" = "v0.5.3" || { echo "TAURI_SUNSET_TAG must be v0.5.3 before releasing"; exit 1; }
           # Every release carries copies pointing to immutable v0.5.3 payloads
@@ -603,6 +626,7 @@ jobs:
           # downloaders see it before the changelog section and its Highlights.
           NOTES_ARGS=(--assets release-assets --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG")
           if [ "$REHEARSAL" = true ]; then NOTES_ARGS+=(--rehearsal); fi
+          if [ "$PHONE_APPS" != true ]; then NOTES_ARGS+=(--no-phones); fi
           {
             # An older tag's changelog section may carry its own download table; it is dropped.
             python3 "$RUNNER_TEMP/release_signing_notes.py" "${NOTES_ARGS[@]}" --notes release-assets/RELEASE_NOTES.md release-signing
@@ -653,7 +677,7 @@ jobs:
           PRERELEASE=false
           if [ "$CHANNEL" = beta ]; then PRERELEASE=true; fi
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --draft --prerelease="$PRERELEASE" --title "$TAG — VoiceStudio" --notes-file release-assets/RELEASE_NOTES.md
+            gh release create "$TAG" --verify-tag --draft --prerelease="$PRERELEASE" --title "$TAG — $APP_NAME" --notes-file release-assets/RELEASE_NOTES.md
           fi
           test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true || { echo "Refusing to replace a published release"; exit 1; }
           gh release edit "$TAG" --prerelease="$PRERELEASE" --notes-file release-assets/RELEASE_NOTES.md
@@ -689,7 +713,7 @@ jobs:
           fi
       # GITHUB_TOKEN publication does not emit another workflow's release event.
       - name: Update the Android repository after stable publication
-        if: github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.rehearsal != true
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.rehearsal != true && env.PHONE_APPS == 'true'
         run: |
           # Rehearsals never publish (tests/test_release_rehearsal.py).
           if [ "$REHEARSAL" != false ]; then echo "::error::A rehearsal run reached a publishing step"; exit 1; fi

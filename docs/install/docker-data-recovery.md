@@ -65,7 +65,7 @@ docker run -d --name omnivoice-migrated \
   -e OMNIVOICE_DATA_DIR=/root/.omnivoice \
   --mount "type=bind,src=$backup_dir/restored-data,dst=/root/.omnivoice" \
   --mount "type=bind,src=$backup_dir/restored-volume,dst=/app/omnivoice_data" \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 ```
 
 Use the same GPU flags, image architecture/flavor and custom environment
