@@ -100,6 +100,7 @@ def test_beta_section_links_to_the_beta_release_and_unreleased_keeps_stable_link
     url = "https://github.com/debpalash/VoiceStudio/releases"
     table = (
         f"| macOS | [VoiceStudio-0.5.8-mac-arm64.dmg]({url}/download/v0.5.8/VoiceStudio-0.5.8-mac-arm64.dmg) |\n"
+        f"| macOS (VS) | [Voice-Suite-0.5.8-mac-arm64.dmg]({url}/download/v0.5.8/Voice-Suite-0.5.8-mac-arm64.dmg) |\n"
         f"Notes: [v0.5.8]({url}/tag/v0.5.8) · keep v0.5.80 and 10.5.8 alone\n"
     )
     changelog = CHANGELOG.replace("- A (#1)\n", f"- A (#1)\n\n{table}")
@@ -108,7 +109,9 @@ def test_beta_section_links_to_the_beta_release_and_unreleased_keeps_stable_link
     beta = beta.split("## [0.5.7]")[0]
     assert f"{url}/download/v0.5.8/VoiceStudio-0.5.8-mac-arm64.dmg" in unreleased
     assert f"{url}/download/v0.5.8-beta.2/VoiceStudio-0.5.8-beta.2-mac-arm64.dmg" in beta
+    assert f"{url}/download/v0.5.8-beta.2/Voice-Suite-0.5.8-beta.2-mac-arm64.dmg" in beta
     assert "[VoiceStudio-0.5.8-beta.2-mac-arm64.dmg]" in beta
+    assert "[Voice-Suite-0.5.8-beta.2-mac-arm64.dmg]" in beta
     assert f"{url}/tag/v0.5.8-beta.2)" in beta
     assert "/v0.5.8/" not in beta
     assert "v0.5.80 and 10.5.8" in beta

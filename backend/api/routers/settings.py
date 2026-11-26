@@ -1137,6 +1137,35 @@ def get_license_acceptance(engine_id: str) -> dict:
     return {"engine_id": eid, "accepted": bool(accepted)}
 
 
+class _CommercialModeBody(BaseModel):
+    enabled: bool = Field(
+        ...,
+        description="Block non-commercial and unverified models from running in commercial production",
+    )
+
+
+@router.get("/commercial-mode")
+def get_commercial_mode() -> dict:
+    """Return whether Commercial Production Guard is active and whether env locks it on."""
+    from services import model_acceptance
+
+    return model_acceptance.commercial_mode_status()
+
+
+@router.put("/commercial-mode")
+def put_commercial_mode(body: _CommercialModeBody) -> dict:
+    """Persist Commercial Production Guard (409 when locked on by OMNIVOICE_COMMERCIAL_ONLY=1)."""
+    from services import model_acceptance
+
+    try:
+        return model_acceptance.set_commercial_mode(bool(body.enabled))
+    except PermissionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("set_commercial_mode failed: %s", log_safe(exc))
+        raise HTTPException(status_code=500, detail="Failed to persist commercial mode") from exc
+
+
 # ── Storage: configurable models directory (#64) ──────────────────────────
 # Where HuggingFace / Torch download model weights. The user's choice is
 # persisted durably to the per-user env file as OMNIVOICE_CACHE_DIR, which

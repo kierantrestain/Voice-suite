@@ -2712,6 +2712,7 @@
     "error_install": "無法安裝更新。",
     "error_not_applied": "更新 {{version}} 未生效。",
     "download_manually": "手動下載",
+    "manual_install_hint": "此版本尚未以 Apple 開發者 ID 簽署，因此無法自行安裝更新。請從發行頁面下載新版本。",
     "view_release": "在 GitHub 上檢視版本",
     "auto_download": "自動下載更新",
     "auto_download_hint": "更新會在背景下載，並在結束時安裝。",

@@ -53,13 +53,35 @@ vercel deploy --prod        # uses vercel.json
 
 ## 2. Inference backend
 
-Directory: [`deploy/inference-backend/`](../../deploy/inference-backend/). It builds this
-repository's `deploy/Dockerfile` (PyTorch CUDA base image; also runs on CPU-only hosts).
+Directory: [`deploy/inference-backend/`](../../deploy/inference-backend/). Supports both a
+**native from-source** backend (macOS / Linux) and **Docker Compose** (building
+`deploy/Dockerfile`, CPU or NVIDIA GPU).
+
+### Option A — Native lifecycle script (macOS / Linux)
+
+```bash
+deploy/inference-backend/backend.sh install \
+  --origin https://voice-suite.vercel.app --commercial-only
+deploy/inference-backend/backend.sh status
+deploy/inference-backend/backend.sh key
+deploy/inference-backend/backend.sh restart
+deploy/inference-backend/backend.sh logs -f
+deploy/inference-backend/backend.sh stop
+```
+
+Settings and the generated 256-bit API key live in `~/.voice-suite-backend/backend.env`
+(`0600`). By default `backend.sh` enables `OMNIVOICE_SERVER_MODE=1`,
+`OMNIVOICE_LOOPBACK_REQUIRES_KEY=1`, and `OMNIVOICE_ANALYTICS_DISABLED=1`; pass
+`--commercial-only` to also lock `OMNIVOICE_COMMERCIAL_ONLY=1` (blocks CC-BY-NC and
+unverified weights with HTTP 403).
+
+### Option B — Docker Compose
 
 ```bash
 cp deploy/inference-backend/.env.example deploy/inference-backend/.env
 # edit .env: OMNIVOICE_API_KEY=$(openssl rand -base64 48)
-#            OMNIVOICE_ALLOWED_ORIGINS=https://<your-project>.vercel.app
+#            OMNIVOICE_ALLOWED_ORIGINS=https://voice-suite.vercel.app
+#            OMNIVOICE_COMMERCIAL_ONLY=1   # recommended for commercial studio use
 docker compose --env-file deploy/inference-backend/.env \
   -f deploy/inference-backend/docker-compose.yml up -d --build
 # NVIDIA GPU: add  -f deploy/inference-backend/docker-compose.gpu.yml
@@ -73,21 +95,25 @@ Pick one:
 
 | Option | How |
 |---|---|
-| Built-in Caddy | Point a DNS name at the host, open ports 80/443, set `VOICE_SUITE_BACKEND_DOMAIN`, add `--profile https`. Caddy gets a Let's Encrypt certificate. |
+| Built-in Caddy | Point a DNS name at the host, open ports 80/443, set `VOICE_SUITE_BACKEND_DOMAIN`, add `--profile https`. Caddy gets a Let's Encrypt certificate (or set `VOICE_SUITE_CADDY_TLS="tls internal"` for a local CA). |
 | Tunnel | Cloudflare Tunnel, Tailscale Funnel or ngrok to `http://127.0.0.1:3900` (free tiers exist; no inbound ports). |
 | Same computer | A backend on the viewer's own machine at `http://localhost:3900` works from the HTTPS site in Chromium and Firefox. |
 
 ### Security checklist
 
-- `OMNIVOICE_API_KEY` is required by the compose file. The browser exchanges it for a
-  short-lived scoped session; the raw key is never stored by the site.
+- `OMNIVOICE_API_KEY` is required by both `backend.sh` and the compose file. The browser
+  exchanges it via `POST /api/auth/session` for a short-lived scoped session; the raw key
+  is never stored by the site.
+- `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` (default in `backend.sh`) prevents same-host
+  reverse proxies or tunnels (`nginx proxy_pass`, `ssh -R`) from bypassing API-key
+  authentication by arriving as `127.0.0.1`.
 - `OMNIVOICE_ALLOWED_ORIGINS` must list the exact Vercel origin(s) (no trailing slash).
   Preview deployments have their own origins; add one if you want to test a preview.
+- `OMNIVOICE_COMMERCIAL_ONLY=1` locks Commercial Production Guard on at the backend
+  chokepoint (`model_acceptance.ensure_accepted`), refusing CC-BY-NC and unverified models
+  with HTTP 403 (`commercial_guard_blocked`) even if previously accepted.
 - Do **not** set `OMNIVOICE_TRUST_HOST_LOOPBACK` or `FORWARDED_ALLOW_IPS=*` when a proxy
   runs on the same host — that would let proxied internet traffic look local.
-- For a bare-metal (non-Docker) backend behind a same-host reverse proxy, proxied
-  requests arrive from loopback and skip the key check: use Docker, or a tunnel that
-  connects from another network namespace.
 - Keep the backend port bound to loopback (`127.0.0.1:3900:3900`) and publish only
   through TLS.
 
@@ -95,24 +121,28 @@ Pick one:
 
 | Host | Notes |
 |---|---|
-| CPU only (4 vCPU, 16 GB RAM) | Verified: KittenTTS ~1× real time, faster-whisper base ~3× real time. OmniVoice and large engines are slow on CPU. |
+| CPU only (2–4 vCPU, 8–16 GB RAM) | Verified: KittenTTS (Apache-2.0, TTS), MOSS-TTS-Nano (Apache-2.0, 48 kHz zero-shot cloning), faster-whisper base (MIT, ASR), WhisperX alignment, AudioSeal watermarking. |
 | NVIDIA (≥ 8 GB VRAM recommended) | Use the GPU override. Most engines are GPU-accelerated. |
-| AMD ROCm / Apple Silicon | Supported by upstream builds (`docs/install/`); the Docker image here targets CUDA/CPU. Apple Silicon runs the backend natively from source with MPS. |
+| AMD ROCm / Apple Silicon | Supported by upstream builds (`docs/install/`); the Docker image targets CUDA/CPU. Apple Silicon runs the backend natively from source with Metal/MPS or MLX. |
 
 No paid service is required. A free-tier VM or a home GPU box plus a free tunnel is enough.
 
-## 3. Desktop packaging (future distribution)
+## 3. Independent desktop packaging & GitHub Releases
 
-The Electron app is unchanged in capability and still builds signed installers with
-electron-builder:
+Voice Suite builds and publishes independently branded installers from
+`kierantrestain/Voice-suite` via `.github/workflows/electron-release.yml`
+(`appId: io.github.kierantrestain.voicesuite`, `productName: Voice Suite`,
+`releaseRepository: kierantrestain/Voice-suite`):
 
 ```bash
-bun run dist            # current platform: DMG / NSIS / AppImage+deb
+bun run dist            # current platform: Voice-Suite-<version>-<os>-<arch>
 ```
 
-CI workflows under `.github/workflows/` build and smoke-test macOS, Windows and Linux
-packages. Publishing Voice Suite-branded releases needs its own code-signing
-certificates (Apple Developer ID, Windows signing) and an update feed in this
-repository's GitHub Releases; see `docs/DESKTOP_RELEASE.md` and `docs/RELEASING.md` for
-the inherited procedure. Until then the auto-updater URLs still reference upstream
-release feeds — see [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
+- Targets: macOS arm64 (`.dmg`/`.zip`), macOS x64 (`.dmg`/`.zip`), Windows x64 (`.exe`),
+  Windows ARM64 (experimental `.exe`), Linux x64 (`.AppImage`/`.deb`).
+- Updater checks `kierantrestain/Voice-suite` GitHub Releases only; upstream VoiceStudio
+  feeds are never contacted. Unsigned (ad-hoc) macOS builds check for updates and direct
+  users to the GitHub Releases page instead of triggering a failing Squirrel.Mac install.
+- Signing/notarisation: configure `ELECTRON_MACOS_CSC_LINK`, `APPLE_API_KEY*`, and
+  `ELECTRON_WINDOWS_CSC_LINK` (or SignPath) in GitHub Actions Secrets for signed releases;
+  when absent, releases are clearly labelled unsigned/ad-hoc in the generated download table.

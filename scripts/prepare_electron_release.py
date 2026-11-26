@@ -11,7 +11,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 from urllib.parse import urlparse
-from check_electron_release_assets import verify_release
+from check_electron_release_assets import ARTIFACT_PREFIX, verify_release
 
 def validate_sunset(manifest, tag):
     if manifest.get("version") != tag.removeprefix("v"):
@@ -161,7 +161,7 @@ def prepare(assets, tag, sunset_tag=None, repo=None, gh=_gh, head=None, missing=
          "digest": "sha256:" + hashlib.sha256(p.read_bytes()).hexdigest()}
         for p in files]}
     installers = ("mac-arm64.dmg", "mac-x64.dmg", "linux-x64.deb")
-    absent_installers = [s for s in installers if not (assets / f"VoiceStudio-{version}-{s}").is_file()]
+    absent_installers = [s for s in installers if not (assets / f"{ARTIFACT_PREFIX}-{version}-{s}").is_file()]
     if missing is not None:
         # Recorded before any check can fail (the caller writes the list even then).
         missing.extend(f"installer {suffix}" for suffix in absent_installers)

@@ -691,6 +691,20 @@
     "title": "AutoExtractRequest",
     "type": "object"
    },
+   "Body_analyze_workflow_audio_quality_tools_analyze_quality_post": {
+    "properties": {
+     "audio": {
+      "contentMediaType": "application/octet-stream",
+      "title": "Audio",
+      "type": "string"
+     }
+    },
+    "required": [
+     "audio"
+    ],
+    "title": "Body_analyze_workflow_audio_quality_tools_analyze_quality_post",
+    "type": "object"
+   },
    "Body_audiobook_cover_audiobook_cover_post": {
     "properties": {
      "cover": {
@@ -5501,6 +5515,20 @@
     "title": "_CallBody",
     "type": "object"
    },
+   "_CommercialModeBody": {
+    "properties": {
+     "enabled": {
+      "description": "Block non-commercial and unverified models from running in commercial production",
+      "title": "Enabled",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "title": "_CommercialModeBody",
+    "type": "object"
+   },
    "_ComputeDeviceBody": {
     "properties": {
      "value": {
@@ -7585,6 +7613,72 @@
      }
     },
     "summary": "Get Changelog",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/commercial-mode": {
+   "get": {
+    "description": "Return whether Commercial Production Guard is active and whether env locks it on.",
+    "operationId": "get_commercial_mode_api_settings_commercial_mode_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Commercial Mode Api Settings Commercial Mode Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Commercial Mode",
+    "tags": [
+     "settings"
+    ]
+   },
+   "put": {
+    "description": "Persist Commercial Production Guard (409 when locked on by OMNIVOICE_COMMERCIAL_ONLY=1).",
+    "operationId": "put_commercial_mode_api_settings_commercial_mode_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/_CommercialModeBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Put Commercial Mode Api Settings Commercial Mode Put",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Put Commercial Mode",
     "tags": [
      "settings"
     ]
@@ -20105,6 +20199,43 @@
      }
     },
     "summary": "Stream Task"
+   }
+  },
+  "/tools/analyze-quality": {
+   "post": {
+    "description": "Inspect uploaded audio for clipping, silence, loudness anomalies, and DC offset.",
+    "operationId": "analyze_workflow_audio_quality_tools_analyze_quality_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_analyze_workflow_audio_quality_tools_analyze_quality_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Analyze Workflow Audio Quality"
    }
   },
   "/tools/direction": {

@@ -289,7 +289,12 @@ def test_prepare_rehearsal_verifies_as_the_package_version_and_credits_up_to_hea
 def test_a_rehearsal_with_failed_legs_still_verifies_the_rest_and_then_fails():
     job = RELEASE["jobs"]["release"]
     # A release keeps needing every leg; only a rehearsal goes on after a failure.
-    assert job["if"] == "${{ success() || (inputs.rehearsal == true && !cancelled() && needs.validate.result == 'success') }}"
+    # A desktop-only release (Voice Suite ships no phone apps) skips the mobile
+    # job; skipped is not failed, so only it is accepted besides success.
+    assert job["if"] == (
+        "${{ !cancelled() && needs.validate.result == 'success' && (inputs.rehearsal == true || "
+        "(needs.package.result == 'success' && (needs.mobile.result == 'success' || needs.mobile.result == 'skipped'))) }}"
+    )
     for name in ("Validate all platforms before creating a release", "Preserve the final Tauri updater feeds"):
         assert '--rehearsal --missing-report "$RUNNER_TEMP/rehearsal-missing-desktop.txt"' in step("release", name)["run"]
     fail = step("release", "Rehearsal - fail when a build leg produced nothing")
@@ -362,7 +367,7 @@ def test_prepare_lists_failed_legs_only_when_asked(release_module, monkeypatch, 
     Path("CHANGELOG.md").write_text("## [1.2.3] — 2026-11-11\n\n- Fix\n", encoding="utf-8")
     assets = tmp_path / "assets"
     assets.mkdir()
-    (assets / "VoiceStudio-1.2.3-mac-arm64.dmg").write_bytes(b"x")
+    (assets / "Voice-Suite-1.2.3-mac-arm64.dmg").write_bytes(b"x")
     # Nothing at all from the other legs: a strict run stops at the first.
     with pytest.raises(Exception, match="missing downloaded manifest"):
         release_module.prepare(assets, "v1.2.3")
@@ -372,7 +377,7 @@ def test_prepare_lists_failed_legs_only_when_asked(release_module, monkeypatch, 
                        "darwin-arm64", "darwin-x64", "linux-x64", "win32-x64"]
     assert (assets / "SHA256SUMS.txt").is_file()
     # A leg with some of its files is broken, not missing: it still fails at once.
-    (assets / "VoiceStudio-1.2.3-win-x64.exe").write_bytes(b"x")
+    (assets / "Voice-Suite-1.2.3-win-x64.exe").write_bytes(b"x")
     with pytest.raises(Exception, match="electron-stable-win32-x64.yml"):
         release_module.prepare(assets, "v1.2.3", missing=[])
 
@@ -384,7 +389,7 @@ def test_a_broken_leg_still_fails_but_every_absent_leg_is_reported(tmp_path):
     (work / "package.json").write_text(json.dumps({"version": "1.2.3"}), encoding="utf-8")
     (work / "CHANGELOG.md").write_text("## [1.2.3] — 2026-11-11\n\n- Fix\n", encoding="utf-8")
     # Windows x64 is broken (installer without its feed); every other leg is absent.
-    (work / "assets/VoiceStudio-1.2.3-win-x64.exe").write_bytes(b"x")
+    (work / "assets/Voice-Suite-1.2.3-win-x64.exe").write_bytes(b"x")
     git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
     subprocess.run(["git", "init", "-q"], cwd=work, check=True)
     subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], cwd=work, check=True)

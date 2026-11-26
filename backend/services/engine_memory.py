@@ -124,3 +124,58 @@ async def evict_other_tts_engines(keep_id: str) -> list[str]:
     if evicted:
         logger.info("single-engine eviction: freed %s (keeping %s)", log_safe(evicted), log_safe(keep_id))
     return evicted
+
+
+def evict_other_tts_engines_sync(keep_id: str | None = None) -> list[str]:
+    """Synchronous counterpart to :func:`evict_other_tts_engines`.
+
+    Used by synchronous synthesis/ASR paths (audiobook setup, voice conversion,
+    and unified-memory ASR offload) so non-OmniVoice TTS instances cannot stack
+    alongside other engines or Whisper on memory-constrained hosts.
+    Pass ``keep_id=None`` to evict every idle resident TTS engine.
+    """
+    if keep_id is not None and not single_engine_resident():
+        return []
+
+    from services import tts_backend
+
+    keep_cls = None
+    if keep_id is not None:
+        try:
+            keep_cls = tts_backend.get_backend_class(keep_id)
+        except ValueError:
+            return []
+
+    evicted: list[str] = []
+    if keep_id != "omnivoice":
+        try:
+            import services.model_manager as mm
+
+            with tts_backend._ENGINE_CACHE_LOCK:
+                core_busy = tts_backend._ENGINE_IN_USE.get(tts_backend.OmniVoiceBackend)
+            if not core_busy and mm.model is not None and mm.unload_shared_model():
+                evicted.append("omnivoice")
+        except Exception:  # noqa: BLE001
+            logger.warning("sync evict: core TTS unload failed", exc_info=True)
+
+    evicted.extend(_evict_instance_cache(keep_cls))
+
+    with tts_backend._ENGINE_CACHE_LOCK:
+        active = tts_backend._active_instance
+        if (
+            active is not None
+            and (keep_cls is None or type(active) is not keep_cls)
+            and not tts_backend._ENGINE_IN_USE.get(type(active))
+        ):
+            active_id = tts_backend._active_instance_id
+            tts_backend.reset_active_backend()
+            if active_id and active_id not in evicted:
+                evicted.append(active_id)
+
+    if evicted:
+        logger.info(
+            "single-engine eviction (sync): freed %s (keeping %s)",
+            log_safe(evicted),
+            log_safe(keep_id or "none"),
+        )
+    return evicted

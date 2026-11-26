@@ -37,7 +37,7 @@ There is no separate preview desktop feed. To try changes between betas:
   [Windows](install/windows.md#building-from-source) ·
   [Linux](install/linux.md#building-from-source)), or build and install a
   package from `main` with the [install script's `--main` mode](install/script.md#building-main).
-- **Docker** — `ghcr.io/debpalash/voicestudio:latest` follows `main`; see
+- **Docker** — `ghcr.io/kierantrestain/voice-suite:latest` follows `main`; see
   [image tags](install/docker.md#image-tags).
 
 When a check finds an update, the installer downloads and is verified in the

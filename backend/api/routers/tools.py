@@ -18,6 +18,7 @@ existing dub helpers and land in follow-up passes.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -32,7 +33,7 @@ from pydantic import BaseModel, Field
 from services import director, speech_rate, incremental
 from services.ffmpeg_utils import find_ffprobe, spawn_subprocess
 from api.dependencies import require_admin, require_native_access
-from core.path_security import UnsafePath, resolve_within
+from core.path_security import UnsafePath, resolve_within, upload_suffix
 
 logger = logging.getLogger("omnivoice.tools")
 router = APIRouter()
@@ -398,4 +399,58 @@ async def finish_workflow_audio(
     finished = await mark_synthetic_async(finished, rate, context="workflow.finish")
     encoded = await run_in_threadpool(_encode_workflow_audio, finished, rate)
     return Response(encoded, media_type="audio/wav")
+
+
+@router.post("/tools/analyze-quality", dependencies=[Depends(require_admin)])
+async def analyze_workflow_audio_quality(
+    audio: UploadFile = File(...),
+):
+    """Inspect uploaded audio for clipping, silence, loudness anomalies, and DC offset."""
+    import tempfile
+    from services.audio_quality import analyze_audio
+
+    data = await audio.read(64 * 1024 * 1024 + 1)
+    if len(data) > 64 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio exceeds 64 MiB.")
+    if not data:
+        raise HTTPException(status_code=422, detail="Empty audio upload.")
+
+    def _run() -> dict:
+        suffix = (upload_suffix(audio.filename, default=".wav") or ".wav").lower()
+        if suffix not in {".wav", ".flac", ".ogg", ".aiff", ".aif"}:
+            suffix = ".wav"
+        fd, tmp_path = tempfile.mkstemp(prefix="vs-qc-", suffix=suffix)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+            try:
+                report = analyze_audio(tmp_path)
+            except Exception:
+                # Fall back to decoding compressed containers (MP3/M4A) via load_audio
+                from services.audio_io import load_audio, _safe_soundfile_write
+
+                wav_fd, wav_path = tempfile.mkstemp(prefix="vs-qc-dec-", suffix=".wav")
+                os.close(wav_fd)
+                try:
+                    tensor, rate = load_audio(tmp_path)
+                    _safe_soundfile_write(
+                        wav_path, tensor.detach().cpu().numpy().T, rate, format="WAV", subtype="FLOAT"
+                    )
+                    report = analyze_audio(wav_path)
+                finally:
+                    with contextlib.suppress(OSError):
+                        os.unlink(wav_path)
+            return report.model_dump()
+        finally:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+
+    try:
+        return await run_in_threadpool(_run)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422, detail="Could not decode uploaded audio for quality analysis."
+        ) from exc
 

@@ -2712,6 +2712,7 @@
     "error_install": "Không thể cài bản cập nhật.",
     "error_not_applied": "Bản cập nhật {{version}} chưa được áp dụng.",
     "download_manually": "Tải thủ công",
+    "manual_install_hint": "Bản dựng này chưa được ký bằng Apple Developer ID nên không thể tự cài đặt bản cập nhật. Hãy tải phiên bản mới từ trang phát hành.",
     "view_release": "Xem bản phát hành trên GitHub",
     "auto_download": "Tự động tải bản cập nhật",
     "auto_download_hint": "Bản cập nhật được tải ở nền và cài khi bạn thoát.",

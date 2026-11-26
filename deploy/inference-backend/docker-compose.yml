@@ -30,7 +30,8 @@ services:
     container_name: voice-suite-backend
     ports:
       # Loopback only. Caddy (profile "https") or your tunnel publishes it.
-      - "127.0.0.1:3900:3900"
+      # VOICE_SUITE_BACKEND_PORT changes the host port (default 3900).
+      - "127.0.0.1:${VOICE_SUITE_BACKEND_PORT:-3900}:3900"
     volumes:
       - voice-suite-data:/app/omnivoice_data
     environment:
@@ -48,6 +49,8 @@ services:
       - OMNIVOICE_ALLOWED_ORIGINS=${OMNIVOICE_ALLOWED_ORIGINS:?set OMNIVOICE_ALLOWED_ORIGINS to the Vercel origin in .env}
       # Opt-in analytics and failure reports stay off unless a user enables them.
       - OMNIVOICE_ANALYTICS_DISABLED=${OMNIVOICE_ANALYTICS_DISABLED:-1}
+      # Set to 1 to lock Commercial Production Guard on (blocks CC-BY-NC/unverified weights).
+      - OMNIVOICE_COMMERCIAL_ONLY=${OMNIVOICE_COMMERCIAL_ONLY:-0}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3900/health"]
       interval: 30s
@@ -63,7 +66,17 @@ services:
     depends_on: [backend]
     network_mode: host
     environment:
-      - VOICE_SUITE_BACKEND_DOMAIN=${VOICE_SUITE_BACKEND_DOMAIN:?set VOICE_SUITE_BACKEND_DOMAIN for the https profile}
+      # Checked when Caddy starts, not at interpolation, so the default
+      # (no-https) profile works without a domain.
+      - VOICE_SUITE_BACKEND_DOMAIN=${VOICE_SUITE_BACKEND_DOMAIN:-}
+      - VOICE_SUITE_BACKEND_PORT=${VOICE_SUITE_BACKEND_PORT:-3900}
+      # Empty: a public Let's Encrypt certificate. "tls internal": Caddy's own
+      # local CA (LAN / testing; import its root certificate on the clients).
+      - VOICE_SUITE_CADDY_TLS=${VOICE_SUITE_CADDY_TLS:-}
+    command:
+      - sh
+      - -c
+      - '[ -n "$$VOICE_SUITE_BACKEND_DOMAIN" ] || { echo "set VOICE_SUITE_BACKEND_DOMAIN in .env for the https profile" >&2; exit 1; }; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

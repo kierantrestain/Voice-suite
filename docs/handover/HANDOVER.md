@@ -20,21 +20,25 @@ This folder is the complete maintainer handover. Read in this order:
 | [RELEASE_NOTES.md](RELEASE_NOTES.md) | Everything Voice Suite changed relative to upstream |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | What is not done, not verified, or depends on external services |
 
-## Current state (2026-11-24)
+## Current state (2026-11-26 — v0.6.0)
 
-- **Branch / PR:** work lives on `feat/voice-suite-integration`
-  ([PR #6](https://github.com/kierantrestain/Voice-suite/pull/6)) and is merged to `main`
-  once its checks are green; `main` is the production branch for Vercel.
-- **CI:** backend + frontend tests, Python tests, Electron tests, renderer smokes, UI
-  crawlers, desktop install/smoke on macOS/Windows/Linux, CodeQL, gitleaks and bandit
-  passed on the PR head before this session; the only failing check was the Android
-  job, which is out of scope (mobile is not a release gate for Voice Suite).
-- **Hosted frontend:** the same React renderer as the desktop app, built as a static
-  site with `VOICE_SUITE_HOSTED=1`. It connects to an inference backend you run and
-  shows a labelled disconnected state when none is connected. It never fakes results.
-- **Real inference verified in this session (CPU):** KittenTTS generation, faster-whisper
-  transcription, AudioSeal watermark detection, WAV 24-bit/48 kHz, FLAC and MP3 export,
-  high-pass/trim/normalise finishing. See [QA_REPORT.md](QA_REPORT.md).
+- **Version & release:** `0.6.0` in lockstep across `package.json`, `pyproject.toml`,
+  `backend/core/version.py`, and `uv.lock`; released from `kierantrestain/Voice-suite`
+  (`io.github.kierantrestain.voicesuite`).
+- **Live hosted frontend:** `https://voice-suite.vercel.app` is deployed from `main` with
+  Vercel Authentication enabled (`VOICE_SUITE_HOSTED=1`, `vercel.json`). Connects to your
+  own inference backend via scoped session exchange and shows a labelled disconnected state
+  when none is connected.
+- **Inference backend:** managed natively via `deploy/inference-backend/backend.sh`
+  (`install/setup/start/stop/restart/status/logs/key`, `--commercial-only`) or Docker
+  Compose (`deploy/inference-backend/docker-compose.yml`), with
+  `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` proxy protection and backend-enforced Commercial
+  Production Guard (`OMNIVOICE_COMMERCIAL_ONLY=1`).
+- **Real inference verified on CPU:** KittenTTS (Apache-2.0, TTS), MOSS-TTS-Nano
+  (Apache-2.0, 48 kHz zero-shot voice cloning), faster-whisper base (MIT, 0% WER),
+  WhisperX + wav2vec2 alignment, AudioSeal watermark detection across WAV/24-bit-48kHz/FLAC/MP3,
+  all 10 production workspaces, and true offline operation (`HF_HUB_OFFLINE=1`). See
+  [QA_REPORT.md](QA_REPORT.md) and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
 ## Operating it
 

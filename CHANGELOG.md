@@ -8,16 +8,20 @@ metadata and the backend fallback mirror it.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-11-26
+
 **Highlights**
 
-- Optional automatic error reports stay off until separately allowed in Privacy
-- Android Stories and Audiobook keep long manuscripts scrollable and recover drafts through activity recreation
-- Stories can merge adjacent lines with compatible speaker and voice settings
-- Linux ROCm setup preserves its installed PyTorch stack, and GPU readiness reflects failed self-tests
-- Phone dub exports check available space and avoid false low-space errors on iOS
+- Voice Suite v0.6.0: local-first audio production with independent macOS, Windows, and Linux releases on `kierantrestain/Voice-suite`
+- Backend-enforced Commercial Production Guard (`OMNIVOICE_COMMERCIAL_ONLY=1` / `/api/settings/commercial-mode`) blocks CC-BY-NC and unverified weights from accidental commercial production
+- Native inference backend lifecycle script (`deploy/inference-backend/backend.sh`) with `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` proxy protection and hosted Vercel frontend connectivity
+- Verified commercial CPU production pipeline: KittenTTS (Apache-2.0), MOSS-TTS-Nano 48 kHz zero-shot voice cloning (Apache-2.0), faster-whisper (MIT), WhisperX alignment, AudioSeal provenance, 24-bit/48 kHz WAV/FLAC/MP3 exports, and true offline mode (`HF_HUB_OFFLINE=1`)
+- Single-residency memory enforcement, idle in-process TTS engine unloading, low-RAM unified-memory ASR offloading, and `/tools/analyze-quality` inspection
 
 ### Changed
 
+- Rebrand to Voice Suite with studio dark theme, model rights indicators, explicit cloning consent, and 24-bit WAV/FLAC audio finishing (#6)
+- Desktop installers, auto-updater feeds, application ID (`io.github.kierantrestain.voicesuite`), and GHCR container publishing target `kierantrestain/Voice-suite` with no upstream update prompts (#7)
 - The Dub demo videos now download on demand (about 10 MB, only when you click Download) instead of shipping inside the app (#4326)
 - Dubbing starts faster: one audio extraction pass, scene detection overlapped with background separation on GPUs, half-precision translation on CUDA, lighter job saves and a leaner history list; opt-in batched Whisper with `OMNIVOICE_ASR_BATCHED=1` (#4323)
 - Windows, macOS and Linux installers drop about 425 MB of unused UI packages from the app archive (#4322)
@@ -44,6 +48,8 @@ metadata and the backend fallback mirror it.
 
 ### Added
 
+- Hosted web frontend for Vercel that connects to your own Voice Suite backend, with live connection status and a clearly labelled disconnected state (#6)
+- Backend-enforced Commercial Production Guard (`/api/settings/commercial-mode`, `OMNIVOICE_COMMERCIAL_ONLY=1`), native inference backend lifecycle script (`deploy/inference-backend/backend.sh`), and `POST /tools/analyze-quality` audio QC endpoint (#7)
 - Generate and the MCP generate_speech tool can add silence between paragraphs, trim engine edge silence, and understand [slow], [fast], [emphasis] and [spell] (#4254) — thanks @velixio!
 - Windows and Linux x64 PCs whose NVIDIA cards are all GTX 900/1000-series (compute capability 5.0 to 6.x, driver 525 or newer) now run on the GPU with a CUDA 12.6 PyTorch build, a one-time ~3 GB download on the next launch; voices, projects and models are kept (#4242)
 - Settings → General can keep VoiceStudio and its running jobs alive in the tray when you close the window, instead of quitting (#4174)
@@ -69,6 +75,10 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Loopback requests arriving behind a same-host reverse proxy now require the API key when `OMNIVOICE_LOOPBACK_REQUIRES_KEY=1` is set (#7)
+- Model rights badges trust authoritative `model_licenses.json` categories, preventing Apache-2.0 commercial engines such as CosyVoice and MOSS-TTS-Nano from being misclassified as non-commercial (#7)
+- Single-residency TTS eviction, idle in-process engine unloading, unified-memory ASR offloading, and dictation backend cleanup prevent memory stacking on 8 GB hosts (#7)
+- Store artifact manifest generation and beta changelog link rewriting now match the `Voice-Suite-` artifact prefix across macOS, Windows, and Linux builds (#7)
 - OmniVoice always loads its reviewed model version, so a new upstream commit can no longer change or break an installed model (#4339, #4360) — thanks @velixio!
 - The stdio MCP shim starts a new session when the server reports an expired one, as the MCP spec requires, and keeps the session id on every request (#4345, #4359) — thanks @Paulo-Brito-Jr!
 - OmniVoice unload now frees the model that cached engine adapters kept alive, so GPU memory is returned (#4355, #4359) — thanks @nklowns!

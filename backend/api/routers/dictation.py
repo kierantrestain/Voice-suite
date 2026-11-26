@@ -176,6 +176,12 @@ def set_dictation_prefs(req: DictationPrefsUpdate):
         try:
             from services import asr_backend
 
+            prev = getattr(asr_backend, "_capture_backend", None)
+            if prev is not None and hasattr(prev, "unload"):
+                try:
+                    prev.unload()
+                except Exception:  # noqa: BLE001 — best-effort cleanup before drop
+                    logger.warning("Dictation capture backend unload failed", exc_info=True)
             asr_backend._capture_backend = None
             asr_backend._capture_backend_key = None
         except Exception as exc:

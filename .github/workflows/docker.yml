@@ -42,10 +42,14 @@
 # The un-suffixed and `-rocm` tags stay linux/amd64 only.
 #
 # GHCR images and layer caches use the lowercase repository owner namespace.
-# Upstream: ghcr.io/debpalash/voicestudio and its omnivoice-studio alias.
-# Docker Hub remains docker.io/palashdeb/omnivoice-studio
-# (Docker Hub push gated on the DOCKERHUB_USERNAME/DOCKERHUB_TOKEN secrets;
-# if unset the build still pushes to GHCR.)
+# Voice Suite (this repository): ghcr.io/kierantrestain/voice-suite, plus the
+# ghcr.io/kierantrestain/voicestudio alias its first main builds published.
+# Upstream (debpalash/VoiceStudio): ghcr.io/debpalash/voicestudio and its
+# omnivoice-studio alias, unchanged.
+# Docker Hub is pushed only when the DOCKERHUB_USERNAME/DOCKERHUB_TOKEN secrets
+# exist AND a Docker Hub repository is named: upstream's palashdeb/omnivoice-studio,
+# or the DOCKERHUB_IMAGE repository variable elsewhere. A fork never pushes into
+# upstream's Docker Hub namespace; without both, the build still pushes to GHCR.
 #
 # Docker Hub overview text is published separately by dockerhub-description.yml
 # when deploy/dockerhub-overview.md changes, without rebuilding these images.
@@ -119,7 +123,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  DOCKERHUB_IMAGE: palashdeb/omnivoice-studio
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE || (github.repository == 'debpalash/VoiceStudio' && 'palashdeb/omnivoice-studio' || '') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # BuildKit layer cache. It lives in GHCR, not the Actions cache: the GHA cache is
   # capped at 10 GB per repository and these layers (one is 4 GB, 5+ GB in total)
@@ -162,8 +166,16 @@ jobs:
         shell: bash
         run: |
           OWNER="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | LC_ALL=C tr 'A-Z' 'a-z')"
-          echo "IMAGE_NAME=${OWNER}/voicestudio" >> "$GITHUB_ENV"
-          echo "LEGACY_IMAGE_NAME=${OWNER}/omnivoice-studio" >> "$GITHUB_ENV"
+          # Owner-derived (a repository rename never moves the images): upstream
+          # keeps its names; every other owner publishes Voice Suite's.
+          if [ "$OWNER" = debpalash ]; then
+            echo "IMAGE_NAME=${OWNER}/voicestudio" >> "$GITHUB_ENV"
+            echo "LEGACY_IMAGE_NAME=${OWNER}/omnivoice-studio" >> "$GITHUB_ENV"
+          else
+            # Voice Suite's own image; `voicestudio` stays an alias of the same build.
+            echo "IMAGE_NAME=${OWNER}/voice-suite" >> "$GITHUB_ENV"
+            echo "LEGACY_IMAGE_NAME=${OWNER}/voicestudio" >> "$GITHUB_ENV"
+          fi
           echo "BUILDCACHE_IMAGE=ghcr.io/${OWNER}/voicestudio-buildcache" >> "$GITHUB_ENV"
           echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -199,7 +211,7 @@ jobs:
       # without the credential still publish to GHCR.
       - name: Check Docker Hub credentials
         id: dockerhub
-        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' && env.DOCKERHUB_IMAGE != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         if: steps.dockerhub.outputs.enabled == 'true'
@@ -353,7 +365,7 @@ jobs:
       # secret exists, so forks still publish to GHCR.
       - name: Check Docker Hub credentials
         id: dockerhub
-        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' && env.DOCKERHUB_IMAGE != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         if: steps.dockerhub.outputs.enabled == 'true'
@@ -522,7 +534,7 @@ jobs:
       # Same Docker Hub gating as the other jobs.
       - name: Check Docker Hub credentials
         id: dockerhub
-        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "enabled=${{ secrets.DOCKERHUB_TOKEN != '' && env.DOCKERHUB_IMAGE != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         if: steps.dockerhub.outputs.enabled == 'true'

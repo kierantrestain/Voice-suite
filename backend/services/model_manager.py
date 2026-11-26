@@ -3764,16 +3764,23 @@ def _release_idle_side_models(idle_timeout: float) -> None:
         contain_system_exit(_release_asr, "idle capture-ASR release")()
     except Exception:  # noqa: BLE001 — the reaper must never kill idle_worker
         logger.warning("idle capture-ASR release failed", exc_info=True)
-    # Engines that keep a model server between requests (the opt-in OmniVoice
-    # GGUF resident server) hold VRAM in a child process the paths above never see.
+    # Engines that keep in-process models or out-of-process servers between
+    # requests (e.g. KittenTTS, MOSS-TTS-Nano, VoxCPM2, GGUF servers) hold RAM/VRAM
+    # that the OmniVoice singleton reaper above never sees.
     try:
-        from services.tts_backend import release_idle_resident_servers
+        from services.tts_backend import (
+            release_idle_engines,
+            release_idle_resident_servers,
+        )
 
+        contain_system_exit(
+            lambda: release_idle_engines(idle_timeout), "idle TTS engine release"
+        )()
         contain_system_exit(
             lambda: release_idle_resident_servers(idle_timeout), "idle resident-server release"
         )()
     except Exception:  # noqa: BLE001 — the reaper must never kill idle_worker
-        logger.warning("idle resident-server release failed", exc_info=True)
+        logger.warning("idle TTS engine/resident-server release failed", exc_info=True)
     # Same bargain for the AudioSeal watermark models, which loaded on the
     # first embed and were never released. Deliberately only here and not
     # in the make-room paths: watermarking runs immediately *after* a
@@ -4062,12 +4069,22 @@ def _offload_unified_memory() -> bool:
         if free_gb is not None and free_gb > _UNIFIED_OFFLOAD_HEADROOM_GB:
             return False  # plenty of room — keep the model warm, pay no reload
         logger.info(
-            "Unified memory tight (%s GB free) — releasing the TTS model so ASR has room "
-            "(it reloads on the next generation).",
+            "Unified memory tight (%s GB free) — releasing resident TTS models so ASR has room "
+            "(they reload on the next generation).",
             "unknown" if free_gb is None else f"{free_gb:.1f}",
         )
-        unload_shared_model()
-        return True
+        released = False
+        if model is not None:
+            unload_shared_model()
+            released = True
+        try:
+            from services.engine_memory import evict_other_tts_engines_sync
+
+            if evict_other_tts_engines_sync(keep_id=None):
+                released = True
+        except Exception as e:  # noqa: BLE001
+            logger.warning("unified-memory non-core TTS offload failed (continuing): %s", e)
+        return released
     except Exception as e:  # noqa: BLE001
         logger.warning("unified-memory TTS offload failed (continuing): %s", e)
         return False
@@ -4081,24 +4098,20 @@ def offload_tts_for_asr():
     CPU before transcription prevents CUDA OOM, then restore_tts_after_asr()
     moves it back.
 
-    Works on CUDA (NVIDIA + ROCm) and Intel XPU.
+    Works on CUDA (NVIDIA + ROCm) and Intel XPU; on unified-memory / CPU hosts
+    it releases any resident TTS engines when free RAM is below the headroom
+    threshold.
     """
     global model
     torch = _lazy_torch()
-    if model is None:
-        return
     if not _has_dedicated_vram():
         # UNIFIED MEMORY (Apple Silicon / CPU). Moving the model "to CPU" frees
-        # nothing here — it is the same physical RAM — which is why this used to
-        # bail out entirely. But the conclusion was wrong: the fix on unified
-        # memory isn't to MOVE the model, it's to RELEASE it.
-        #
-        # Holding the ~3.8 GB TTS model resident while WhisperX large-v3 (~3 GB)
-        # loads on top of it is what gets the backend OOM-killed mid-dub on a
-        # 16 GB Mac (#1119) — the transcribe stream just dies. Unload it and the
-        # room is real. get_model() lazily reloads on the next TTS use, so the
-        # only cost is that reload, and only when memory was actually tight.
+        # nothing here — it is the same physical RAM — so release any resident
+        # TTS engine (OmniVoice core or sidecar/in-process engines) when free
+        # RAM is tight so Whisper/WhisperX has headroom.
         _offload_unified_memory()
+        return
+    if model is None:
         return
     try:
         # Check if there's enough free VRAM to skip offloading

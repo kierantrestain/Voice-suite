@@ -2712,6 +2712,7 @@
     "error_install": "업데이트를 설치하지 못했습니다.",
     "error_not_applied": "업데이트 {{version}}이(가) 적용되지 않았습니다.",
     "download_manually": "직접 다운로드",
+    "manual_install_hint": "이 빌드는 아직 Apple Developer ID로 서명되지 않아 업데이트를 직접 설치할 수 없습니다. 릴리스 페이지에서 새 버전을 다운로드하세요.",
     "view_release": "GitHub에서 릴리스 보기",
     "auto_download": "업데이트 자동 다운로드",
     "auto_download_hint": "업데이트는 백그라운드에서 다운로드되고 종료할 때 설치됩니다.",

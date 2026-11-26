@@ -1,12 +1,15 @@
 # TLS front for the Voice Suite backend (docker compose --profile https).
-# Caddy obtains and renews a Let's Encrypt certificate for the domain; ports
-# 80 and 443 must reach this host. Long uploads and generations are allowed.
+# Default: Caddy obtains and renews a Let's Encrypt certificate for the domain;
+# ports 80 and 443 must reach this host. VOICE_SUITE_CADDY_TLS="tls internal"
+# uses Caddy's local CA instead (no public DNS; trust its root on clients).
+# Long uploads and generations are allowed.
 {$VOICE_SUITE_BACKEND_DOMAIN} {
+	{$VOICE_SUITE_CADDY_TLS}
 	encode zstd gzip
 	request_body {
 		max_size 2GB
 	}
-	reverse_proxy 127.0.0.1:3900 {
+	reverse_proxy 127.0.0.1:{$VOICE_SUITE_BACKEND_PORT:3900} {
 		transport http {
 			read_timeout 30m
 			write_timeout 30m

@@ -9,35 +9,47 @@ import {
   type ModelLicenseInfo,
 } from './model-license-contract';
 
+import { apiJson } from '@/lib/api/client';
+
 export const COMMERCIAL_MODE_STORAGE_KEY = 'voicesuite.commercialMode';
 const COMMERCIAL_MODE_EVENT = 'voicesuite:commercial-mode-changed';
 
+// Fallback token lists used ONLY when authoritative backend `model_licenses.json`
+// metadata (`info.license_category` / `info.license`) is unavailable.
 const NONCOMMERCIAL_TOKENS = [
   'omnivoice',
   'k2-fsa/omnivoice',
   'f5-tts',
-  'chatterbox',
-  'indextts',
-  'cosyvoice',
-  'supertonic',
+  'nllb-200',
+  'outetts',
 ];
 
 const COMMERCIAL_PERMITTED_TOKENS = [
   'kokoro',
   'hexgrad/kokoro',
-  'piper',
-  'rhasspy/piper',
   'kittentts',
   'kitten-tts',
   'kittenml/kitten-tts',
+  'moss-tts-nano',
+  'moss-tts-v15',
+  'openmoss-team/moss-tts',
+  'cosyvoice',
+  'funaudiollm/fun-cosyvoice3',
+  'voxcpm',
+  'openbmb/voxcpm',
+  'pockettts',
+  'kyutai/pocket-tts',
+  'dots-tts',
+  'audiocpp-dots',
+  'ming-tts',
+  'gpt-sovits',
   'faster-whisper',
   'systran/faster-whisper',
   'whisperx',
-  'm-bain/whisperx',
-  'sherpa-onnx',
-  'k2-fsa/sherpa-onnx',
+  'whisper-cpp',
+  'moonshine',
+  'parakeet',
   'qwen3-tts',
-  'qwen/qwen3-tts',
 ];
 
 export interface ClassifiedModelRights {
@@ -58,11 +70,41 @@ export function classifyModelRights(
   const declaredLicense = (info?.license ?? '').trim();
   const declaredLower = declaredLicense.toLowerCase();
 
+  // 1. Authoritative backend registry classification always takes precedence.
+  if (declaredCategory === 'noncommercial') {
+    return {
+      category: 'noncommercial',
+      shortBadge: 'Non-Commercial Weights (CC-BY-NC)',
+      headline: 'Non-Commercial Weights (CC-BY-NC) — Do not use for commercial business outputs',
+      spdx: declaredLicense || 'CC-BY-NC-4.0',
+      isNonCommercial: true,
+      isCommercialPermitted: false,
+    };
+  }
+  if (declaredCategory === 'commercial') {
+    return {
+      category: 'commercial',
+      shortBadge: 'Commercial Output Permitted (Apache-2.0 / MIT)',
+      headline: 'Commercial Output Permitted (Apache-2.0 / MIT)',
+      spdx: declaredLicense || 'Apache-2.0 / MIT',
+      isNonCommercial: false,
+      isCommercialPermitted: true,
+    };
+  }
+  if (declaredCategory === 'conditions') {
+    return {
+      category: 'conditions',
+      shortBadge: 'Commercial Use With Conditions',
+      headline: 'Commercial Use Permitted With Licence Conditions — Review Terms',
+      spdx: declaredLicense || 'OpenRAIL / Conditional',
+      isNonCommercial: false,
+      isCommercialPermitted: false,
+    };
+  }
+
+  // 2. Fallback heuristic only when no authoritative category was provided.
   const matchesNonCommercial =
-    declaredCategory === 'noncommercial' ||
-    declaredLower.includes('nc') ||
-    declaredLower.includes('non-commercial') ||
-    declaredLower.includes('noncommercial') ||
+    /\bnc\b|-nc\b|non-?commercial/.test(declaredLower) ||
     NONCOMMERCIAL_TOKENS.some((token) => normalized.includes(token));
 
   if (matchesNonCommercial) {
@@ -77,9 +119,9 @@ export function classifyModelRights(
   }
 
   const matchesCommercial =
-    declaredCategory === 'commercial' ||
     declaredLower === 'apache-2.0' ||
     declaredLower === 'mit' ||
+    declaredLower === 'cc-by-4.0' ||
     COMMERCIAL_PERMITTED_TOKENS.some((token) => normalized.includes(token));
 
   if (matchesCommercial) {
@@ -94,7 +136,7 @@ export function classifyModelRights(
   }
 
   return {
-    category: declaredCategory === 'conditions' ? 'conditions' : 'unknown',
+    category: 'unknown',
     shortBadge: 'Review License Before Commercial Use',
     headline: 'Review License Before Commercial Use',
     spdx: declaredLicense || 'Upstream Model Terms',
@@ -109,6 +151,17 @@ function readCommercialMode(): boolean {
     return raw === '1' || raw === 'true';
   } catch {
     return false;
+  }
+}
+
+function writeCommercialModeCache(next: boolean): void {
+  try {
+    localStorage.setItem(COMMERCIAL_MODE_STORAGE_KEY, next ? '1' : '0');
+  } catch {
+    // Preserve in-memory session state when localStorage is restricted.
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(COMMERCIAL_MODE_EVENT, { detail: next }));
   }
 }
 
@@ -127,13 +180,26 @@ export function useCommercialProductionMode(): [boolean, (next: boolean) => void
 
   const update = (next: boolean) => {
     setEnabled(next);
+    writeCommercialModeCache(next);
     try {
-      localStorage.setItem(COMMERCIAL_MODE_STORAGE_KEY, next ? '1' : '0');
+      void Promise.resolve(
+        apiJson<{ enabled?: boolean }>('/api/settings/commercial-mode', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next }),
+        }),
+      )
+        .then((res) => {
+          if (typeof res?.enabled === 'boolean' && res.enabled !== next) {
+            setEnabled(res.enabled);
+            writeCommercialModeCache(res.enabled);
+          }
+        })
+        .catch(() => {
+          // Offline / env-locked errors keep local state until reconnected.
+        });
     } catch {
-      // Preserve in-memory session state when localStorage is restricted.
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(COMMERCIAL_MODE_EVENT, { detail: next }));
+      // Offline / test environments without fetch keep local state cleanly.
     }
   };
 

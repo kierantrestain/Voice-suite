@@ -282,7 +282,7 @@ def test_actual_mac_publication_shell_enforces_trust_per_platform(
     import subprocess
     step = next(s for s in load_workflow()["jobs"]["package"]["steps"]
                 if s.get("name") == "Verify macOS signing and notarization before publication")
-    (tmp_path / "electron" / "release" / f"mac-{arch}" / "VoiceStudio.app").mkdir(parents=True)
+    (tmp_path / "electron" / "release" / f"mac-{arch}" / "Voice Suite.app").mkdir(parents=True)
     fake = tmp_path / "bin"
     fake.mkdir()
     calls = tmp_path / "calls"
@@ -293,7 +293,7 @@ def test_actual_mac_publication_shell_enforces_trust_per_platform(
         shim.chmod(0o755)
     env = dict(os.environ, PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", CALL_LOG=str(calls),
                ALLOW_UNSIGNED=str(allow_unsigned).lower(), HAS_CREDENTIALS=str(credentials).lower(),
-               PUBLISH="true", PLATFORM="darwin")
+               PUBLISH="true", PLATFORM="darwin", APP_NAME="Voice Suite")
     # These context reads and ==/!=/&& predicates have the same semantics in
     # [[ ... ]]; execute the checked-in workflow condition as well as its shell.
     condition = step["if"].replace("inputs.publish", '"$PUBLISH"').replace(
@@ -350,11 +350,16 @@ def test_release_notes_helper_comes_from_the_workflow_commit(tmp_path):
     )
     write(work / "release-signing", "linux", "x64", "not-applicable")
     env = dict(os.environ, PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", GITHUB_SHA="workflow-sha",
-               GITHUB_REPOSITORY="debpalash/VoiceStudio", RUNNER_TEMP=str(tmp_path))
+               GITHUB_REPOSITORY="debpalash/VoiceStudio", RUNNER_TEMP=str(tmp_path), PHONE_APPS="true")
     subprocess.run(["bash", "-e", "-c", describe["run"]], cwd=work, env=env, check=True)
     text = (work / "release-assets/RELEASE_NOTES.md").read_text(encoding="utf-8")
     # The table leads the notes; the changelog follows unchanged.
     assert "| Linux x64 |" in text and "| iPhone |" in text
+    # A desktop-only release (no phone apps) lists no phone rows.
+    (work / "release-assets/RELEASE_NOTES.md").write_text("**Highlights**\n")
+    subprocess.run(["bash", "-e", "-c", describe["run"]], cwd=work, env={**env, "PHONE_APPS": "false"}, check=True)
+    desktop_only = (work / "release-assets/RELEASE_NOTES.md").read_text(encoding="utf-8")
+    assert "| Linux x64 |" in desktop_only and "| iPhone |" not in desktop_only and "| Android |" not in desktop_only
     assert text.index("### Download") < text.index("**Highlights**")
     assert "releases/download/v" not in text  # no assets in this checkout: no links
     assert text.count("| Linux x64 |") == 1 and "| Platform | Installer |" not in text

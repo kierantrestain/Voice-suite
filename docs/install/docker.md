@@ -12,9 +12,12 @@ and declining or skipping it keeps them off. Set
 `-e OMNIVOICE_ANALYTICS_DISABLED=1` to switch analytics off entirely. Model
 weights download from Hugging Face when you install a model.
 
-**Official images:** [`ghcr.io/debpalash/voicestudio`](https://github.com/debpalash/VoiceStudio/pkgs/container/voicestudio)
-and [`palashdeb/omnivoice-studio` on Docker Hub](https://hub.docker.com/r/palashdeb/omnivoice-studio) — same images, same tags.
-The former `ghcr.io/debpalash/omnivoice-studio` path remains a compatible alias.
+**Official images:** [`ghcr.io/kierantrestain/voice-suite`](https://github.com/kierantrestain/Voice-suite/pkgs/container/voice-suite)
+`ghcr.io/kierantrestain/voicestudio` is a compatible alias of the same builds.
+Voice Suite does not publish to Docker Hub (the workflow pushes there only when
+the repository names its own `DOCKERHUB_IMAGE` and has Docker Hub credentials).
+Upstream VoiceStudio's images (`ghcr.io/debpalash/voicestudio`,
+`palashdeb/omnivoice-studio` on Docker Hub) are a different product build.
 
 **Upgrading an existing container?** Follow the
 [backup and path-preserving migration procedure](docker-data-recovery.md)
@@ -89,21 +92,20 @@ master key.
 ## Pull and run (CPU)
 
 ```bash
-docker pull ghcr.io/debpalash/voicestudio:stable
+docker pull ghcr.io/kierantrestain/voice-suite:stable
 
 docker run -d --name omnivoice \
   -p 127.0.0.1:3900:3900 \
   -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 ```
 
-> **Docker Hub mirror:** the same images are published to
-> `palashdeb/omnivoice-studio` on Docker Hub with identical tags — swap the
-> image for `palashdeb/omnivoice-studio:stable` if you prefer Docker Hub.
+> **Compatibility path:** the same images are also published as
+> `ghcr.io/kierantrestain/voicestudio` with identical tags.
 > Tag semantics (`:latest` = rolling main preview, `:stable`/`:X.Y.Z` =
-> releases) are the same on both registries.
+> releases) are the same on both paths.
 
 Open [http://localhost:3900](http://localhost:3900). The first run downloads
 ~2.4 GB of model weights — follow `docker logs -f omnivoice` to watch.
@@ -116,7 +118,7 @@ docker run -d --name omnivoice --gpus all \
   -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 ```
 
 GPU mode requires the
@@ -136,7 +138,7 @@ docker run -d --name omnivoice --gpus all \
   -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable-cuda-arm64
+  ghcr.io/kierantrestain/voice-suite:stable-cuda-arm64
 ```
 
 It needs the NVIDIA Container Toolkit and a driver that supports CUDA 12.9.
@@ -181,7 +183,7 @@ docker run -d --name omnivoice \
   -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable-rocm
+  ghcr.io/kierantrestain/voice-suite:stable-rocm
 ```
 
 ### AMD GPU on WSL2
@@ -206,7 +208,7 @@ docker run -d --name omnivoice \
   -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v omnivoice-data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable-rocm
+  ghcr.io/kierantrestain/voice-suite:stable-rocm
 ```
 
 The image currently uses ROCm 7.2.x, so `HSA_ENABLE_DXG_DETECTION=1` is
@@ -249,7 +251,7 @@ The same flags work with **Podman** (`podman run --device /dev/kfd
 ```ini
 # ~/.config/containers/systemd/omnivoice.container
 [Container]
-Image=ghcr.io/debpalash/voicestudio:stable-rocm
+Image=ghcr.io/kierantrestain/voice-suite:stable-rocm
 AddDevice=/dev/kfd
 AddDevice=/dev/dri
 PublishPort=127.0.0.1:3900:3900
@@ -486,7 +488,7 @@ docker run -e OMNIVOICE_API_KEY="$OMNIVOICE_API_KEY" \
   -e OMNIVOICE_PUBLIC_API_BASE=https://api.your-host.example \
   -e OMNIVOICE_ALLOWED_ORIGINS=https://ui.your-host.example \
   -p 0.0.0.0:3900:3900 \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 ```
 
 List the UI's origin in `OMNIVOICE_ALLOWED_ORIGINS` so the API accepts its
@@ -525,7 +527,7 @@ docker run -d -p 127.0.0.1:3900:3900 \
   -e OMNIVOICE_TRUST_HOST_LOOPBACK=1 \
   -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
   -v voicestudio_data:/app/omnivoice_data \
-  ghcr.io/debpalash/voicestudio:stable
+  ghcr.io/kierantrestain/voice-suite:stable
 ```
 
 With `OMNIVOICE_TRUST_HOST_LOOPBACK=1`, requests whose socket address is

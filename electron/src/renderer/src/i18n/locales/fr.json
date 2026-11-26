@@ -2714,6 +2714,7 @@
     "error_install": "La mise à jour n'a pas pu être installée.",
     "error_not_applied": "La mise à jour {{version}} ne s'est pas appliquée.",
     "download_manually": "Télécharger manuellement",
+    "manual_install_hint": "Cette version n'est pas encore signée avec un identifiant de développeur Apple : elle ne peut donc pas installer les mises à jour elle-même. Téléchargez la nouvelle version depuis sa page de publication.",
     "view_release": "Voir la version sur GitHub",
     "auto_download": "Télécharger les mises à jour automatiquement",
     "auto_download_hint": "Les mises à jour se téléchargent en arrière-plan et s'installent à la fermeture.",

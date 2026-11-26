@@ -397,6 +397,27 @@ describe('UpdateSettings', () => {
     await waitFor(() => expect(mocks.setAutoDownload).toHaveBeenCalledWith(false));
   });
 
+  test('an unsigned macOS build explains why and links the release page instead of downloading', async () => {
+    mocks.state = {
+      ...mocks.state,
+      status: 'available',
+      availableVersion: '0.6.1',
+      autoDownload: false,
+      manualInstall: true,
+    };
+    renderSettings();
+    expect(await screen.findByText('update.manual_install_hint')).toBeInTheDocument();
+    // No automatic-download switch and no in-app download: Squirrel.Mac would reject it.
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'update.download' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'update.download_manually' }));
+    await waitFor(() =>
+      expect(mocks.openExternal).toHaveBeenCalledWith(
+        'https://github.com/kierantrestain/Voice-suite/releases/tag/v0.6.1',
+      ),
+    );
+  });
+
   test('hides the automatic download setting where the app cannot update itself', async () => {
     mocks.state = { ...mocks.state, status: 'unsupported', unsupportedReason: 'development' };
     renderSettings();
@@ -423,7 +444,7 @@ describe('UpdateSettings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'update.download_manually' }));
     await waitFor(() =>
       expect(mocks.openExternal).toHaveBeenCalledWith(
-        'https://github.com/debpalash/VoiceStudio/releases/tag/v0.5.3',
+        'https://github.com/kierantrestain/Voice-suite/releases/tag/v0.5.3',
       ),
     );
   });
@@ -554,7 +575,7 @@ describe('UpdateSettings', () => {
       fireEvent.click(screen.getByText('updates.open_releases'));
       await waitFor(() =>
         expect(mocks.openExternal).toHaveBeenCalledWith(
-          'https://github.com/debpalash/VoiceStudio/releases',
+          'https://github.com/kierantrestain/Voice-suite/releases',
         ),
       );
     } finally {

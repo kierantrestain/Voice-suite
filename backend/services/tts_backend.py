@@ -5359,6 +5359,9 @@ async def resolve_generation_backend(
     if routing["routing_status"] == "unavailable":
         raise ValueError(routing["routing_reason"])
 
+    from services.engine_memory import evict_other_tts_engines
+    await evict_other_tts_engines(engine_id)
+
     _model = None
     if backend_cls is OmniVoiceBackend:
         # OmniVoice needs its model pre-loaded before construction: called
