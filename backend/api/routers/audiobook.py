@@ -657,6 +657,9 @@ def _build_synth(
     engine_id = active_backend_id()
     cls = get_backend_class(engine_id)
     ensure_engine_licence(cls)
+    from services.engine_memory import evict_other_tts_engines_sync
+
+    evict_other_tts_engines_sync(engine_id)
     if cls is OmniVoiceBackend:
         from services.model_manager import get_model
         return {"mode": "omnivoice", "resolve": resolve, "engine_id": engine_id,

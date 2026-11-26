@@ -284,12 +284,18 @@ def _activate_translation_model(tier: str) -> dict | None:
     # translator is ready.
     if current not in {"argos", "nllb"} and selection_ready("translation", current):
         return None
+    from services import model_acceptance
+
+    commercial_only = model_acceptance.is_commercial_mode()
     target = str(_PERFORMANCE_TARGETS["translation"][tier]["engine"])
+    if commercial_only and target == "nllb":
+        target = "argos"
+    candidates = ("argos",) if commercial_only else ("argos", "nllb")
     if not selection_ready("translation", target):
         target = next(
             (
                 candidate
-                for candidate in ("argos", "nllb")
+                for candidate in candidates
                 if selection_ready("translation", candidate)
             ),
             "",

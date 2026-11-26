@@ -26,6 +26,9 @@ from services import model_licenses
 logger = logging.getLogger(__name__)
 
 ERROR_CODE = "model_licence_required"
+COMMERCIAL_GUARD_ERROR_CODE = "commercial_guard_blocked"
+COMMERCIAL_MODE_ENV = "OMNIVOICE_COMMERCIAL_ONLY"
+_COMMERCIAL_MODE_KEY = "commercial_production_mode"
 _KEY_PREFIX = "model_licence_accepted:"
 # Pre-existing per-engine acceptances that covered the same upstream terms.
 # They count once, so users who already accepted are not asked twice.
@@ -34,24 +37,80 @@ _LEGACY_ENGINE_ACCEPTANCE = {"supertone/supertonic-3": "supertonic3"}
 _REPO = re.compile(r"[A-Za-z0-9][\w.-]*/[\w.-]+(?::[\w.-]+)?\Z")
 _cache_lock = threading.Lock()
 _cache: tuple[float, dict] | None = None
+_TRUTHY_ENV = frozenset({"1", "true", "yes", "on"})
+
+
+def commercial_mode_locked() -> bool:
+    """True when the server operator locked commercial-only mode via env."""
+    import os
+
+    return os.environ.get(COMMERCIAL_MODE_ENV, "").strip().lower() in _TRUTHY_ENV
+
+
+def is_commercial_mode() -> bool:
+    """True when restricted/non-commercial models must be blocked for commercial production."""
+    if commercial_mode_locked():
+        return True
+    from services import settings_store
+
+    try:
+        return (settings_store.get_text(_COMMERCIAL_MODE_KEY) or "").strip().lower() in _TRUTHY_ENV
+    except Exception:  # noqa: BLE001 — unreadable settings fall back to off unless env-locked
+        return False
+
+
+def commercial_mode_status() -> dict:
+    locked = commercial_mode_locked()
+    return {"enabled": locked or is_commercial_mode(), "locked_by_env": locked}
+
+
+def set_commercial_mode(enabled: bool) -> dict:
+    """Persist the Commercial Production Guard setting unless locked on by env."""
+    if commercial_mode_locked() and not enabled:
+        raise PermissionError(
+            f"Commercial Production Guard is locked on by {COMMERCIAL_MODE_ENV}=1."
+        )
+    from services import settings_store
+
+    settings_store.set_text(_COMMERCIAL_MODE_KEY, "1" if enabled else "0")
+    return commercial_mode_status()
 
 
 class ModelLicenceNotAccepted(RuntimeError):
-    """Raised before a gated model is loaded or used without acceptance."""
+    """Raised before a gated or commercial-guard-blocked model is loaded or used."""
 
-    def __init__(self, models: list[dict], reason: str | None = None):
+    def __init__(
+        self,
+        models: list[dict],
+        reason: str | None = None,
+        *,
+        code: str = ERROR_CODE,
+    ):
         self.models = models
+        self.code = code
         names = ", ".join(m["repo_id"] for m in models)
-        super().__init__(
-            f"Licence not accepted for {names}. Review and accept it in Model Catalogue."
-            if models
-            else "Model licence records are unreadable, so models cannot be verified. "
-            "Reinstall or update VoiceStudio."
-        )
+        if code == COMMERCIAL_GUARD_ERROR_CODE and models:
+            message = (
+                f"Blocked by Commercial Production Guard: {names} do not carry verified "
+                "commercial-use weights. Switch to a commercially permitted engine "
+                "(such as KittenTTS, MOSS-TTS-Nano, CosyVoice, VoxCPM2, or Faster-Whisper) "
+                "or turn off Commercial Production Guard for non-commercial work."
+            )
+        elif models:
+            message = f"Licence not accepted for {names}. Review and accept it in Model Catalogue."
+        else:
+            message = (
+                "Model licence records are unreadable, so models cannot be verified. "
+                "Reinstall or update Voice Suite."
+            )
+        super().__init__(message)
         self.reason = reason
 
     def detail(self) -> dict:
-        return {"code": ERROR_CODE, "message": str(self), "models": self.models}
+        out = {"code": self.code, "message": str(self), "models": self.models}
+        if self.reason:
+            out["reason"] = self.reason
+        return out
 
 
 def _registry() -> dict:
@@ -308,12 +367,25 @@ def revoke(repo_id: str) -> dict:
 
 
 def ensure_accepted(repo_ids: Iterable[str]) -> None:
-    """Raise ``ModelLicenceNotAccepted`` listing every unaccepted gated model."""
+    """Raise ``ModelLicenceNotAccepted`` for commercial-guard-blocked or unaccepted models."""
+    commercial_only = is_commercial_mode()
+    blocked_commercial = []
     missing = []
     for repo_id in dict.fromkeys(r for r in repo_ids if r):
         state = status(repo_id)
+        if commercial_only and state["category"] in ("noncommercial", "unknown"):
+            blocked_commercial.append(
+                {k: state[k] for k in ("repo_id", "license", "category", "fingerprint")}
+            )
+            continue
         if state["required"] and not state["accepted"]:
             missing.append({k: state[k] for k in ("repo_id", "license", "category", "fingerprint")})
+    if blocked_commercial:
+        raise ModelLicenceNotAccepted(
+            blocked_commercial,
+            reason="commercial_production_guard",
+            code=COMMERCIAL_GUARD_ERROR_CODE,
+        )
     if missing:
         raise ModelLicenceNotAccepted(missing)
 

@@ -100,7 +100,7 @@ normalize_origin() {
 }
 
 setup() {
-    origins='' port='' runtime='' rotate=0 domain='' tls_internal=''
+    origins='' port='' runtime='' rotate=0 domain='' tls_internal='' commercial_only=''
     while [ "$#" -gt 0 ]; do
         case $1 in
             --origin) [ "$#" -ge 2 ] || die '--origin needs a URL'
@@ -111,6 +111,8 @@ setup() {
             --native) runtime=native ;;
             --https) [ "$#" -ge 2 ] || die '--https needs a domain'; domain=$2; shift ;;
             --tls-internal) tls_internal='tls internal' ;;
+            --commercial-only) commercial_only=1 ;;
+            --allow-noncommercial) commercial_only=0 ;;
             --rotate-key) rotate=1 ;;
             *) die "unknown setup option: $1 (see help)" ;;
         esac
@@ -128,6 +130,8 @@ setup() {
     [ -n "$runtime" ] || runtime=native
     [ -n "$domain" ] || domain=$(conf_get VOICE_SUITE_BACKEND_DOMAIN)
     [ -n "$tls_internal" ] || tls_internal=$(conf_get VOICE_SUITE_CADDY_TLS)
+    [ -n "$commercial_only" ] || commercial_only=$(conf_get OMNIVOICE_COMMERCIAL_ONLY)
+    [ -n "$commercial_only" ] || commercial_only=0
     conf_write \
         "VOICE_SUITE_RUNTIME=$runtime" \
         "OMNIVOICE_API_KEY=$key" \
@@ -139,11 +143,13 @@ setup() {
         "OMNIVOICE_SERVER_MODE=1" \
         "OMNIVOICE_LOOPBACK_REQUIRES_KEY=1" \
         "OMNIVOICE_ANALYTICS_DISABLED=1" \
+        "OMNIVOICE_COMMERCIAL_ONLY=$commercial_only" \
         "VOICE_SUITE_BACKEND_DOMAIN=$domain" \
         "VOICE_SUITE_CADDY_TLS=$tls_internal"
     say "Settings saved to $CONF (readable only by you)."
     say "  Website allowed: $origins"
     say "  Runs:            $runtime, http://127.0.0.1:$port"
+    [ "$commercial_only" != 1 ] || say "  Commercial only: enabled (non-commercial weights blocked)"
     [ -z "$domain" ] || say "  HTTPS front:     https://$domain${tls_internal:+ (local CA)}"
 }
 

@@ -18,6 +18,13 @@ class AudioQuality(BaseModel):
     analyzed_seconds: float
     truncated: bool
     warnings: list[AudioWarning]
+    sample_rate: int = 0
+    channels: int = 0
+    peak_dbfs: float = -120.0
+    rms_dbfs: float = -120.0
+    dc_offset: float = 0.0
+    clipped_samples: int = 0
+    silence_ratio: float = 0.0
 
 
 def analyze_audio(path: str | Path, *, max_seconds: float = 7200) -> AudioQuality:
@@ -28,12 +35,19 @@ def analyze_audio(path: str | Path, *, max_seconds: float = 7200) -> AudioQualit
     One-second silence and 12dB sustained deviations are advisory only.
     """
     levels, clips, invalid = [], [], []
+    peak_linear = 0.0
+    sum_sq = 0.0
+    sum_val = 0.0
+    total_samples = 0
+    clipped_total = 0
     with sf.SoundFile(path) as source:
-        duration = len(source) / source.samplerate
-        if source.channels > 64 or source.samplerate > 768000:
+        sample_rate = int(source.samplerate)
+        channels = int(source.channels)
+        duration = len(source) / sample_rate
+        if channels > 64 or sample_rate > 768000:
             raise ValueError('Unsupported audio dimensions')
-        window = max(1, round(source.samplerate * .1))
-        limit = min(len(source), int(max(0, min(max_seconds, 7200)) * source.samplerate))
+        window = max(1, round(sample_rate * .1))
+        limit = min(len(source), int(max(0, min(max_seconds, 7200)) * sample_rate))
         read = 0
         while read < limit:
             data = source.read(min(window, limit - read), dtype='float32', always_2d=True)
@@ -43,24 +57,38 @@ def analyze_audio(path: str | Path, *, max_seconds: float = 7200) -> AudioQualit
             finite = np.isfinite(data)
             invalid.append(not bool(finite.all()))
             data = np.where(finite, data, 0).astype(np.float64)
-            clips.append(bool(np.count_nonzero(np.abs(data) >= .999) >= 3))
+            clipped_here = int(np.count_nonzero(np.abs(data) >= .999))
+            clipped_total += clipped_here
+            clips.append(bool(clipped_here >= 3))
+            peak_linear = max(peak_linear, float(np.max(np.abs(data))))
+            sum_sq += float(np.sum(data * data))
+            sum_val += float(np.sum(data))
+            total_samples += int(data.size)
             rms = float(np.sqrt(np.max(np.mean(data * data, axis=0))))
             levels.append(20 * np.log10(max(rms, 1e-12)))
-        analyzed = read / source.samplerate
-        step = window / source.samplerate
+        analyzed = read / sample_rate
+        step = window / sample_rate
 
     warnings = []
     truncated = analyzed < duration
     if not levels:
-        return AudioQuality(duration=duration, analyzed_seconds=analyzed,
-                            truncated=truncated, warnings=[AudioWarning(kind='empty', start=0, end=0)])
+        return AudioQuality(
+            duration=duration,
+            analyzed_seconds=analyzed,
+            truncated=truncated,
+            warnings=[AudioWarning(kind='empty', start=0, end=0)],
+            sample_rate=sample_rate,
+            channels=channels,
+            silence_ratio=1.0,
+        )
     values = np.asarray(levels)
     active = values[values > -50]
     baseline = float(np.median(active)) if len(active) else -50
+    silence_mask = values <= -50
     checks = [
         ('invalid', np.asarray(invalid), 0),
         ('clipping', np.asarray(clips), 0),
-        ('silence', values <= -50, 0 if not len(active) else 1),
+        ('silence', silence_mask, 0 if not len(active) else 1),
         ('quiet', (values > -50) & (values < baseline - 12), .5),
         ('loud', values > baseline + 12, .5),
     ]
@@ -77,5 +105,17 @@ def analyze_audio(path: str | Path, *, max_seconds: float = 7200) -> AudioQualit
     if len(warnings) > 100:
         truncated = True
         del warnings[100:]
-    return AudioQuality(duration=duration, analyzed_seconds=analyzed,
-                        truncated=truncated, warnings=warnings)
+    rms_linear = float(np.sqrt(sum_sq / max(1, total_samples)))
+    return AudioQuality(
+        duration=duration,
+        analyzed_seconds=analyzed,
+        truncated=truncated,
+        warnings=warnings,
+        sample_rate=sample_rate,
+        channels=channels,
+        peak_dbfs=round(float(20 * np.log10(max(peak_linear, 1e-6))), 2),
+        rms_dbfs=round(float(20 * np.log10(max(rms_linear, 1e-6))), 2),
+        dc_offset=round(float(sum_val / max(1, total_samples)), 6),
+        clipped_samples=clipped_total,
+        silence_ratio=round(float(np.mean(silence_mask)), 4),
+    )
