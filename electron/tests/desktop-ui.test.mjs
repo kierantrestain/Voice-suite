@@ -100,7 +100,48 @@ test('guard: a renderer request leaving the machine fails the run', async (t) =>
 });
 
 test('first run: setup gate completes to home', async (t) => {
+  const model = {
+    repo_id: 'KittenML/kitten-tts-mini-0.8',
+    label: 'KittenTTS',
+    role: 'TTS',
+    size_gb: 0.0815,
+    installed: true,
+    supported: true,
+    license_info: { license: 'Apache-2.0', license_category: 'commercial' },
+  };
+  await withApp(
+    t,
+    {
+      seed: false,
+      fixtures: {
+        '/models': { models: [model] },
+        '/api/settings/commercial-mode': { enabled: true },
+        '/engines/select': {},
+      },
+    },
+    async ({ page, backend }) => {
+      await page.getByRole('heading', { name: 'Install models', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Use this model', exact: true }).click();
+      await page.getByRole('button', { name: 'Enter studio', exact: true }).click();
+      await page.getByRole('heading', { name: 'Home', exact: true }).waitFor();
+      assert.equal(
+        await page.evaluate(() => localStorage.getItem('voicestudio.setup.complete.v1')),
+        '1',
+      );
+      assert(
+        backend.requests.some(
+          (request) =>
+            request.path === '/engines/select' &&
+            JSON.parse(request.body).backend_id === 'kittentts',
+        ),
+      );
+    },
+  );
+});
+
+test('first run: Advanced still offers the full setup wizard', async (t) => {
   await withApp(t, { seed: false }, async ({ page }) => {
+    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
     await page.getByRole('heading', { name: 'System check', exact: true }).first().waitFor();
     const next = page.getByRole('button', { name: 'Continue', exact: true });
     // System check -> Model packs -> Privacy -> Enter studio

@@ -847,7 +847,7 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.result != 'skipped' && needs.changes.outputs.electron != 'false' && needs.changes.outputs.runtime != 'false' }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: ${{ matrix.platform == 'darwin' && startsWith(github.head_ref, 'release/') && 45 || 20 }}
     strategy:
       fail-fast: false
       matrix:
@@ -985,6 +985,14 @@ jobs:
         working-directory: electron
         run: |
           bun x electron-builder --config electron-builder.config.mjs --mac --arm64 --publish never
+
+      - name: Clean macOS first sound on release branches
+        if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS' && startsWith(github.head_ref, 'release/')
+        working-directory: electron
+        env:
+          VOICESTUDIO_RUNTIME_TIMEOUT_MS: '900000'
+          VOICESTUDIO_MODEL_TIMEOUT_MS: '300000'
+        run: node tests/packaged-smoke.mjs --first-sound
 
       - name: Upload macOS .dmg and .zip installer artifacts
         if: steps.pass.outputs.hit != 'true' && runner.os == 'macOS'

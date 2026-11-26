@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
+import { RELEASES_URL } from '@shared/app-config';
 import type { BackendStatus } from '../../../preload/index.d';
 import { BackendGate, delimitedDiagnostic } from './backend-gate';
 
@@ -53,7 +54,7 @@ beforeEach(() => {
   platform.current = 'linux';
 });
 
-const openPanel = (key: 'setup.options' | 'setup.more_fixes' | 'backend.details') =>
+const openPanel = (key: 'dub.advanced' | 'setup.more_fixes' | 'backend.details') =>
   fireEvent.click(screen.getByRole('button', { name: i18n.t(key) }));
 
 it('presents an interrupted runtime as a resumable install', () => {
@@ -361,7 +362,7 @@ it('explains unsupported Windows proxy bypass rules before retrying setup', () =
   );
 });
 
-const LATEST_RELEASE_URL = 'https://github.com/debpalash/VoiceStudio/releases/latest';
+const LATEST_RELEASE_URL = `${RELEASES_URL}/latest`;
 
 it('sends Apple Silicon users running the Intel build to the arm64 download (#2598)', () => {
   backendStatus.setupIssue = 'wrong_architecture';
@@ -802,7 +803,7 @@ it('offers the existing server editor before installing a local runtime without 
     },
   };
   renderGate('setup_required');
-  openPanel('setup.options');
+  openPanel('dub.advanced');
   fireEvent.click(screen.getByRole('button', { name: i18n.t('setup.use_other_computer') }));
   const input = await screen.findByRole('textbox', { name: i18n.t('settings.remote_backend_url') });
   expect(testRemote).not.toHaveBeenCalled();
@@ -872,7 +873,7 @@ it('offers help links before anything fails, and names the remote option plainly
   expect(
     screen.getByRole('link', { name: new RegExp(i18n.t('setup.help_install')) }),
   ).toHaveAttribute('href', expect.stringContaining('docs/install/linux.md'));
-  openPanel('setup.options');
+  openPanel('dub.advanced');
   expect(
     screen.getByRole('button', { name: i18n.t('setup.use_other_computer') }),
   ).toBeInTheDocument();
@@ -1058,7 +1059,7 @@ it('leads with the essentials and keeps every option collapsed by default', () =
     );
     expect(screen.getByRole('button', { name: i18n.t('backend.setup_required') })).toBeEnabled();
     expect(screen.getByTestId('setup-free-space')).toBeVisible();
-    const toggle = screen.getByRole('button', { name: i18n.t('setup.options') });
+    const toggle = screen.getByRole('button', { name: i18n.t('dub.advanced') });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     for (const name of ['settings.language', 'firstrun.region_label']) {
       expect(screen.queryByRole('combobox', { name: i18n.t(name) })).not.toBeInTheDocument();
@@ -1158,7 +1159,7 @@ it('makes moving the runtime the primary fix for a full drive (DISK_FULL)', asyn
   }
 });
 
-it('keeps an in-flight interpreter check and its result across closing and reopening Options', async () => {
+it('keeps an in-flight interpreter check and its result across closing and reopening Advanced', async () => {
   let resolveChoice: (value: unknown) => void = () => {};
   const choosePythonRuntime = vi.fn(() => new Promise((resolve) => (resolveChoice = resolve)));
   bridgeStub.current = {
@@ -1168,20 +1169,20 @@ it('keeps an in-flight interpreter check and its result across closing and reope
     },
   };
   renderGate('setup_required');
-  openPanel('setup.options');
+  openPanel('dub.advanced');
   fireEvent.click(
     await screen.findByRole('button', { name: i18n.t('settings.python_runtime_choose') }),
   );
   expect(await screen.findByText(i18n.t('settings.python_runtime_validating'))).toBeVisible();
 
   // Closing hides the panel without unmounting the running check.
-  openPanel('setup.options');
+  openPanel('dub.advanced');
   expect(document.getElementById('setup-panel-options')).not.toBeVisible();
   await act(async () =>
     resolveChoice({ ok: true, pythonPath: '/opt/py/bin/python', version: '3.11.9', token: 't' }),
   );
 
-  openPanel('setup.options');
+  openPanel('dub.advanced');
   expect(screen.getByTestId('python-runtime-staged')).toHaveTextContent('/opt/py/bin/python');
   expect(screen.getByTestId('python-runtime-confirm')).toBeEnabled();
   expect(choosePythonRuntime).toHaveBeenCalledOnce();

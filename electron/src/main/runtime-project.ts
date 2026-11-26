@@ -1957,7 +1957,7 @@ export async function installRuntime(
     maxRetries: 5,
     retryDelay: 200,
   }).catch(() => undefined);
-  await discardRuntimeInstallFiles(project);
+  if (process.platform === 'darwin') await discardRuntimeInstallFiles(project);
 }
 
 /** The ready interpreter owns its installed files, independently of uv's cache. */
