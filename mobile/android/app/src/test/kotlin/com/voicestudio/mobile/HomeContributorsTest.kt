@@ -55,7 +55,7 @@ class HomeContributorsTest {
     }
     @Test fun homeHeroKeepsTextAndPortraitsParallelAndCompact() {
         compose.setContent {Content(hero=true)}
-        compose.onNodeWithText("VoiceStudio").assertExists()
+        compose.onNodeWithText("Voice Suite").assertExists()
         compose.onNodeWithText(L10n.load(app,"en").t("mobile.home.brought_by")).assertExists()
         for(login in listOf("kevin9327","psiberfunk","jaketame","rudycelekli")) compose.onNodeWithTag("home.contributor.$login").assertIsDisplayed()
         compose.onNodeWithText(L10n.load(app,"en").t("mobile.home.subtitle")).assertExists()

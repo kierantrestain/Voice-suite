@@ -110,6 +110,18 @@ Zacznij od **VoiceStudio** (domyślnie, obsługiwanego przez k2-fsa/OmniVoice) l
 
 <p align="center"><a href="https://discord.gg/bzQavDfVV9"><img src="../../docs/assets/discord-community.svg" alt="Come say hello! Join us on Discord" height="64" /></a></p>
 
+## Get Voice Suite
+
+Voice Suite is built from this repository ([kierantrestain/Voice-suite](https://github.com/kierantrestain/Voice-suite)). It does not yet publish its own signed installers; the platform installers listed under [Platforms](#platforms) are the upstream VoiceStudio builds.
+
+| Route | What runs where | Guide |
+|---|---|---|
+| **Hosted web app** (Vercel) | The interface is a static site; generation, cloning, dubbing and transcription run on a Voice Suite backend you host (Docker, CPU or NVIDIA GPU) and connect in **Settings → Sharing → Remote backend** with its API key | [Deployment](../../docs/handover/DEPLOYMENT.md) |
+| **Inference backend** (Docker) | `docker compose -f deploy/inference-backend/docker-compose.yml up -d --build` | [Deployment](../../docs/handover/DEPLOYMENT.md#2-inference-backend) |
+| **From source** (desktop or browser) | `git clone https://github.com/kierantrestain/Voice-suite.git`, then `bun run dev:web` or `bun run desktop` | [Get started](#get-started) |
+
+Handover documentation for maintainers is in [docs/handover](../../docs/handover/HANDOVER.md).
+
 ## Pro i Cloud
 
 Wszystko powyżej jest bezpłatne, działa na Twoim sprzęcie i nie wymaga konta. Pro i Cloud są opcjonalne.
@@ -146,6 +158,8 @@ Wszystko powyżej jest bezpłatne, działa na Twoim sprzęcie i nie wymaga konta
 <a id="platforms"></a>
 
 ## Platformy
+
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
 
 Wybierz swój system, a następnie rozwiń metodę instalacji.
 
@@ -470,8 +484,8 @@ Jeśli `voicestudio.sh` jest nieosiągalny, uruchom skrypt bezpośrednio z repoz
 **Ze źródła**
 
 ```bash
-git clone https://github.com/debpalash/VoiceStudio.git
-cd VoiceStudio
+git clone https://github.com/kierantrestain/Voice-suite.git
+cd Voice-suite
 bun run dev
 ```
 

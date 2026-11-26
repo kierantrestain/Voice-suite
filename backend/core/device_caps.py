@@ -1146,12 +1146,171 @@ def mlx_supported() -> tuple[bool, str]:
     )
 
 
+def apple_silicon_mps_status(torch_mod=None) -> dict:
+    """Detailed Apple Silicon Metal (MPS) acceleration status and CPU fallback diagnostics.
+
+    Detects macOS arm64 (``sys.platform == "darwin"`` and ``platform.machine()`` in
+    ``("arm64", "aarch64")``), checks ``torch.backends.mps.is_built()`` and
+    ``torch.backends.mps.is_available()``, reports total unified memory from
+    ``psutil.virtual_memory().total``, checks ``PYTORCH_ENABLE_MPS_FALLBACK``,
+    and returns a human-readable ``acceleration_explanation`` so CPU fallbacks
+    are explicitly explained rather than silent. Never raises.
+    """
+    plat = sys.platform
+    try:
+        machine = _platform.machine().strip().lower()
+    except Exception:
+        machine = ""
+    is_darwin = plat == "darwin"
+    is_apple_silicon = is_darwin and machine in ("arm64", "aarch64")
+
+    if torch_mod is None:
+        try:
+            import torch as _torch
+
+            torch_mod = _torch
+        except Exception:
+            torch_mod = None
+
+    mps_built = False
+    mps_available = False
+    if torch_mod is not None:
+        try:
+            mps_backend = getattr(getattr(torch_mod, "backends", None), "mps", None)
+            if mps_backend is not None:
+                is_avail_fn = getattr(mps_backend, "is_available", None)
+                if callable(is_avail_fn):
+                    mps_available = bool(is_avail_fn())
+                is_built_fn = getattr(mps_backend, "is_built", None)
+                if callable(is_built_fn):
+                    mps_built = bool(is_built_fn())
+                else:
+                    mps_built = mps_available
+        except Exception:
+            mps_built = False
+            mps_available = False
+
+    unified_memory_bytes = 0
+    unified_memory_gb = 0.0
+    try:
+        import psutil
+
+        unified_memory_bytes = int(psutil.virtual_memory().total)
+        unified_memory_gb = round(float(unified_memory_bytes) / (1024 ** 3), 2)
+    except Exception:
+        # psutil is optional or may fail in restricted containers; fall back to 0.0 GB.
+        unified_memory_bytes = 0
+        unified_memory_gb = 0.0
+
+    mps_fallback_raw = os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", "").strip()
+    mps_fallback_enabled = mps_fallback_raw.lower() in {"1", "true", "yes", "on"}
+    cpu_pinned = requested_device_override() == "cpu"
+    mps_active = bool(is_apple_silicon and mps_available and not cpu_pinned)
+
+    if cpu_pinned:
+        explanation = (
+            "CPU fallback active: compute device is explicitly pinned to CPU by user override "
+            "(OMNIVOICE_DEVICE=cpu or Settings → Performance & Device)."
+        )
+    elif mps_active:
+        fallback_note = (
+            " (PYTORCH_ENABLE_MPS_FALLBACK=1 enabled for unsupported ops)"
+            if mps_fallback_enabled
+            else ""
+        )
+        explanation = (
+            f"Apple Silicon Metal (MPS) acceleration active "
+            f"({unified_memory_gb:.1f} GB unified memory){fallback_note}."
+        )
+    elif is_apple_silicon:
+        if torch_mod is None:
+            explanation = (
+                "CPU fallback on Apple Silicon: PyTorch is not importable, so Metal (MPS) "
+                "acceleration could not be initialized."
+            )
+        elif not mps_built:
+            explanation = (
+                "CPU fallback on Apple Silicon: installed PyTorch build was compiled without "
+                "Metal (MPS) support."
+            )
+        else:
+            explanation = (
+                "CPU fallback on Apple Silicon: PyTorch is built with MPS, but Metal "
+                "acceleration is unavailable on this macOS runtime."
+            )
+    elif is_darwin:
+        explanation = (
+            f"CPU fallback on Intel Mac ({machine or 'x86_64'}): Apple Silicon Metal (MPS) "
+            "acceleration requires an arm64 Mac."
+        )
+    else:
+        cuda_avail = False
+        if torch_mod is not None:
+            try:
+                cuda_avail = bool(torch_mod.cuda.is_available())
+            except Exception:
+                cuda_avail = False
+        if cuda_avail:
+            is_rocm = getattr(getattr(torch_mod, "version", None), "hip", None) is not None
+            accel_name = "AMD ROCm" if is_rocm else "NVIDIA CUDA"
+            explanation = f"{accel_name} GPU acceleration active on {plat}/{machine or 'unknown'}."
+        else:
+            explanation = (
+                f"CPU fallback on {plat}/{machine or 'unknown'}: Apple Silicon Metal (MPS) "
+                "requires macOS arm64 and no active GPU accelerator (CUDA/ROCm/MPS) was detected."
+            )
+
+    return {
+        "platform": plat,
+        "arch": machine,
+        "is_darwin": is_darwin,
+        "is_apple_silicon": is_apple_silicon,
+        "mps_built": mps_built,
+        "mps_available": mps_available,
+        "mps_active": mps_active,
+        "unified_memory_bytes": unified_memory_bytes,
+        "unified_memory_gb": unified_memory_gb,
+        "recommended_vram_budget_gb": round(unified_memory_gb / 2.0, 2) if is_apple_silicon else 0.0,
+        "pytorch_enable_mps_fallback": mps_fallback_enabled,
+        "acceleration_explanation": explanation,
+    }
+
+
+def release_mps_cache(torch_mod=None) -> bool:
+    """Safely release cached Metal (MPS) allocator memory via ``torch.mps.empty_cache()``
+    when MPS is active. Never raises; returns ``True`` when the cache was emptied."""
+    if requested_device_override() == "cpu":
+        return False
+    if torch_mod is None:
+        try:
+            import torch as _torch
+
+            torch_mod = _torch
+        except Exception:
+            return False
+    try:
+        mps_backend = getattr(getattr(torch_mod, "backends", None), "mps", None)
+        is_avail_fn = getattr(mps_backend, "is_available", None)
+        if not callable(is_avail_fn) or not is_avail_fn():
+            return False
+        mps_mod = getattr(torch_mod, "mps", None)
+        empty_cache = getattr(mps_mod, "empty_cache", None)
+        if callable(empty_cache):
+            empty_cache()
+            return True
+    except Exception:
+        return False
+    return False
+
+
 __all__ = [
     "DeviceFamily",
     "HostCaps",
     "detect_host_caps",
     "refresh",
     "mlx_supported",
+    "apple_silicon_mps_status",
+    "release_mps_cache",
     "is_windows_on_arm",
     "arch_unsupported",
     "gfx_for_hsa_override",
@@ -1171,3 +1330,4 @@ __all__ = [
     "UNUSABLE_GPU_MARKER",
     "cuda_forced",
 ]
+

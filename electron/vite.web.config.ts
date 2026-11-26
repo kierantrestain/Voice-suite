@@ -13,6 +13,34 @@ const version = JSON.parse(
   readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8'),
 ).version;
 const backendPort = process.env.OMNIVOICE_PORT || String(DEFAULT_BACKEND_PORT);
+// A static hosted build (Vercel): the backend is another origin, chosen at
+// runtime in Settings or defaulted by VITE_VOICE_SUITE_BACKEND_URL.
+const hosted = process.env.VOICE_SUITE_HOSTED === '1';
+
+/**
+ * The hosted page talks to a backend on another origin, so its CSP must let
+ * fetch/WebSocket/media reach HTTPS (and loopback HTTP for a backend on the
+ * same computer). Everything else stays as strict as the desktop page.
+ */
+export function hostedCsp(html: string): string {
+  return html.replace(/content="default-src 'self';[^"]*"/, () => {
+    const policy = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*",
+      "media-src 'self' blob: data: https: http://localhost:* http://127.0.0.1:*",
+      'frame-src https://forms.gle https://docs.google.com',
+      "connect-src 'self' blob: https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+      "font-src 'self' data:",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ];
+    return `content="${policy.join('; ')}"`;
+  });
+}
 
 export default defineConfig({
   root,
@@ -23,7 +51,8 @@ export default defineConfig({
     {
       name: 'app-identity',
       transformIndexHtml(html) {
-        return html.replaceAll('__APP_PRODUCT_NAME__', PRODUCT_NAME);
+        const named = html.replaceAll('__APP_PRODUCT_NAME__', PRODUCT_NAME);
+        return hosted ? hostedCsp(named) : named;
       },
     },
     {
@@ -41,6 +70,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
     __BUILD_COMMIT__: JSON.stringify(buildCommit()),
     __WEB_DEPLOYMENT__: true,
+    __HOSTED_FRONTEND__: hosted,
   },
   resolve: {
     alias: {

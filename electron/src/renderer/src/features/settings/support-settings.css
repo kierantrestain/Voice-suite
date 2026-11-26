@@ -14,28 +14,28 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 8px 20px 34px;
+  padding: 8px 20px 32px;
 }
 .support-emblem {
   position: relative;
   display: grid;
   place-items: center;
-  width: 100px;
-  height: 100px;
-  margin-bottom: 22px;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 24px;
   color: var(--primary);
 }
 .support-intro h1 {
   max-width: 100%;
-  font-size: clamp(30px, 4.6cqi, 48px);
-  font-weight: 650;
-  letter-spacing: -0.045em;
-  line-height: 1.08;
+  font-size: clamp(28px, 4.2cqi, 44px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
   text-wrap: balance;
 }
 .support-intro p {
-  max-width: 470px;
-  margin-top: 14px;
+  max-width: 480px;
+  margin-top: 12px;
   font-size: 15px;
   line-height: 1.6;
   color: var(--muted-foreground);

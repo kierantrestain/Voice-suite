@@ -139,7 +139,7 @@ it('explains why a picked source folder was rejected and how to get one', async 
   fireEvent.click(screen.getByRole('checkbox', { name: 'agentWorkspace.source' }));
   expect(screen.getByText('repairAgent.noSource')).toBeInTheDocument();
   expect(
-    screen.getByText(/git clone https:\/\/github\.com\/debpalash\/VoiceStudio\.git/),
+    screen.getByText(/git clone https:\/\/github\.com\/kierantrestain\/Voice-suite\.git/),
   ).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /common\.learn_more/ })).toHaveAttribute(
     'href',

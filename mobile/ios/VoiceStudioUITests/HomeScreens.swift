@@ -9,7 +9,7 @@ final class HomeScreens: XCTestCase {
         XCTAssertTrue(title.exists)
         XCTAssertEqual(title.label, "Home")
         XCTAssertLessThan(title.frame.midX, app.frame.width / 2)
-        XCTAssertTrue(app.staticTexts["VoiceStudio"].exists)
+        XCTAssertTrue(app.staticTexts["Voice Suite"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "Home-dark"; attachment.lifetime = .keepAlways; add(attachment)
         for (route, title) in [("speak","Speech"),("voices","Clone a voice"),("dub","Dub"),("dictate","Dictate"),("models","Models"),("connect","Connect to VoiceStudio")] {
             let card = app.buttons["home."+route]
@@ -77,7 +77,7 @@ final class MaintainerCardScreens: XCTestCase {
         let subtitle = app.staticTexts["home.subtitle"]
         XCTAssertTrue(wordmark.isHittable)
         XCTAssertTrue(subtitle.isHittable)
-        XCTAssertEqual(wordmark.label, "VoiceStudio")
+        XCTAssertEqual(wordmark.label, "Voice Suite")
         XCTAssertEqual(subtitle.label, "Open Source fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation in 646 languages.")
         XCTAssertLessThanOrEqual(wordmark.frame.maxX, palash.frame.minX)
         XCTAssertLessThanOrEqual(subtitle.frame.maxX, palash.frame.minX)

@@ -1,4 +1,4 @@
-# VoiceStudio — License Notice
+# Voice Suite — License Notice (derived from VoiceStudio)
 
 ## Abbreviation
 
@@ -8,7 +8,7 @@ AGPL-3.0-only
 
 Copyright 2024-present Palash Debnath and VoiceStudio contributors.
 
-VoiceStudio is **free and open-source software, licensed under the GNU
+Voice Suite (derived from VoiceStudio) is **free and open-source software, licensed under the GNU
 Affero General Public License, Version 3 (AGPL-3.0)**. You are free to use,
 copy, modify, and redistribute it. That **includes commercial and internal
 business use** of the application itself. Model weights, tokenizers, and other
@@ -16,16 +16,17 @@ third-party assets retain their own terms; this application license does not
 grant or summarize rights under those separate terms.
 
 Because this is the **Affero** GPL, one additional obligation applies: if you
-modify VoiceStudio and make that modified version available to others over
+modify Voice Suite or VoiceStudio and make that modified version available to others over
 a network, you must also offer those users the complete corresponding source
 code of your modified version under these same AGPL-3.0 terms. See the full
 text in [`LICENSE`](LICENSE).
 
-Commercial use under the AGPL-3.0 is free. What is paid is a **commercial
-license** for organizations that want to embed VoiceStudio in a closed-source or
-proprietary product or service without the AGPL-3.0 copyleft obligations, and
-the VoiceStudio Pro features. See the plans at <https://voicestudio.sh/pro>; for
-other inquiries contact `hi@voicestudio.sh`.
+Commercial and internal production use under the AGPL-3.0 is free of charge. If
+you distribute copies of the software or provide network access to a modified
+version, you must comply with the AGPL-3.0 source availability, license
+preservation, and attribution obligations, including preserving upstream
+copyright and attribution notices for Palash Debnath (`debpalash/VoiceStudio`)
+and Han Zhu (`k2-fsa/OmniVoice`).
 
 Contributors license their contributions to Yupcha Softwares Private Limited,
 the company that maintains VoiceStudio, under the

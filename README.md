@@ -1,18 +1,13 @@
 <div align="center">
-  <h1><sub><img src="docs/logo.png" alt="" width="36" height="36" /></sub> VoiceStudio</h1>
-  <p>
-    <a href="https://trendshift.io/repositories/28176?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-28176" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/28176" alt="Trendshift badge showing where VoiceStudio ranks among trending repositories" width="220" height="48" /></a>
-  </p>
+  <h1><sub><img src="docs/logo.png" alt="" width="36" height="36" /></sub> Voice Suite</h1>
   <h2>AI voice studio. On your device.</h2>
   <h3>Clone, design, dub, dictate, transcribe and narrate in 646 languages.</h3>
   <p>Runs on your laptop, desktop, servers, phone, tablets and more</p>
   <p>
-    <a href="https://voicestudio.sh/?utm_source=github&utm_medium=readme&utm_campaign=project">Website</a> ·
-    <a href="https://github.com/debpalash/VoiceStudio/releases/latest">Download</a> ·
+    <a href="#get-voice-suite">Get Voice Suite</a> ·
     <a href="#get-started">Get started</a> ·
-    <a href="#documentation">Docs</a> ·
-    <a href="https://voicestudio.sh/pro?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project">VoiceStudio Pro</a> ·
-    <a href="https://app.voicestudio.sh/?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project">VoiceStudio Cloud</a>
+    <a href="#local-first-architecture--model-licensing">Architecture &amp; Licensing</a> ·
+    <a href="#documentation">Docs</a>
   </p>
   <!-- README_LANGUAGES_START -->
   <a id="readme-languages"></a>
@@ -27,15 +22,6 @@
     <a href="https://github.com/debpalash/VoiceStudio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/debpalash/VoiceStudio/ci.yml?branch=main&amp;style=flat-square&amp;label=build&amp;labelColor=27272a" alt="CI" /></a>
     <a href="https://github.com/debpalash/VoiceStudio/releases/latest"><img src="https://img.shields.io/github/v/release/debpalash/VoiceStudio?style=flat-square&amp;labelColor=27272a&amp;color=52525b" alt="Latest release" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-52525b?style=flat-square&amp;labelColor=27272a" alt="AGPL-3.0" /></a>
-    <a href="https://supermetry.com"><img src="https://app.supermetry.com/px/zfjiv7psp4ed.svg?c=VoiceStudio" alt="views" /></a>
-    <a href="https://discord.gg/bzQavDfVV9"><img src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?style=flat-square&amp;logo=discord&amp;logoColor=white" alt="Join Discord" /></a>
-  </p>
-  <p>
-    <sub>Strategic sponsors</sub>      <a href="https://github.com/debpalash/OpenGTM?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opengtm-dark.svg" /><img src="docs/sponsors/opengtm.svg" alt="OpenGTM" height="32" align="middle" /></picture></a>
-    <a href="https://github.com/debpalash/Opal?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opal-dark.svg" /><img src="docs/sponsors/opal.svg" alt="Opal" height="32" align="middle" /></picture></a>
-    <a href="https://github.com/velixio/supermetry?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/supermetry-dark.svg" /><img src="docs/sponsors/supermetry.svg" alt="Supermetry" height="32" align="middle" /></picture></a>
-      ·   <sub>Special sponsor</sub> 
-    <a href="https://spicrawl.com?utm_source=voicestudio&amp;utm_medium=github_readme&amp;utm_campaign=special_sponsor&amp;utm_content=logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/spicrawl-dark.svg" /><img src="docs/sponsors/spicrawl.svg" alt="Spicrawl" height="32" align="middle" /></picture></a>
   </p>
   <br />
 </div>
@@ -52,10 +38,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/debpalash/VoiceStudio/releases/latest"><img src="https://img.shields.io/badge/Download-993f61?style=for-the-badge&amp;logo=github&amp;logoColor=ffffff" alt="Download" height="24" /></a>
+  <a href="#get-voice-suite"><img src="https://img.shields.io/badge/Get%20Voice%20Suite-993f61?style=for-the-badge" alt="Get Voice Suite" height="24" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/Get%20started-27272a?style=for-the-badge" alt="Get started" height="24" /></a>
-  <a href="https://voicestudio.sh/pro?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=hero-badge"><img src="https://img.shields.io/badge/VoiceStudio%20Pro-27272a?style=for-the-badge" alt="VoiceStudio Pro" height="24" /></a>
-  <a href="https://app.voicestudio.sh/?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=hero-badge"><img src="https://img.shields.io/badge/VoiceStudio%20Cloud-27272a?style=for-the-badge" alt="VoiceStudio Cloud" height="24" /></a>
 </p>
 
 ## What you can do
@@ -103,44 +87,32 @@
 - **Narrate & batch** — Stories, audiobooks and queued jobs
 - **Connect & automate** — Local API, MCP, reusable recipes and watch folders
 
-Start with **VoiceStudio** (default, powered by k2-fsa/OmniVoice), or pick from dozens of other engines in the Model Manager. See the [features & engine catalog](docs/feature-catalog.md).
+Start with **Voice Suite** (default, powered by k2-fsa/OmniVoice), or pick from dozens of other engines in the Model Manager. (Upstream compatibility: **VoiceStudio** (default, powered by k2-fsa/OmniVoice)). See the [features & engine catalog](docs/feature-catalog.md).
 
-<p align="center"><a href="https://discord.gg/bzQavDfVV9"><img src="docs/assets/discord-community.svg" alt="Come say hello! Join us on Discord" height="64" /></a></p>
+## Get Voice Suite
 
-## Pro and Cloud
+Voice Suite is built from this repository ([kierantrestain/Voice-suite](https://github.com/kierantrestain/Voice-suite)). It does not yet publish its own signed installers; the platform installers listed under [Platforms](#platforms) are the upstream VoiceStudio builds.
 
-Everything above is free, runs on your own hardware and needs no account. Pro and Cloud are optional.
+| Route | What runs where | Guide |
+|---|---|---|
+| **Hosted web app** (Vercel) | The interface is a static site; generation, cloning, dubbing and transcription run on a Voice Suite backend you host (Docker, CPU or NVIDIA GPU) and connect in **Settings → Sharing → Remote backend** with its API key | [Deployment](docs/handover/DEPLOYMENT.md) |
+| **Inference backend** (Docker) | `docker compose -f deploy/inference-backend/docker-compose.yml up -d --build` | [Deployment](docs/handover/DEPLOYMENT.md#2-inference-backend) |
+| **From source** (desktop or browser) | `git clone https://github.com/kierantrestain/Voice-suite.git`, then `bun run dev:web` or `bun run desktop` | [Get started](#get-started) |
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <a href="https://voicestudio.sh/pro?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section"><img src="docs/assets/voicestudio-pro.svg" alt="" width="56" height="56" align="middle" /></a>&nbsp;&nbsp;<strong><a href="https://voicestudio.sh/pro?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section">VoiceStudio Pro</a></strong><br /><br />
-      For paid client work across more than one machine.
-      <ul>
-        <li>A Commercial License for VoiceStudio's code in your client work, emailed to you</li>
-        <li>One user on up to 3 devices at once</li>
-        <li>Send jobs to your other GPUs while your projects stay local</li>
-        <li>New features and fixes first</li>
-      </ul>
-      <sub>Closed-source build, account required, 7-day full refund. The AGPL-3.0 app stays free, including commercial use under its terms. Neither licence covers model weights: the default OmniVoice weights are non-commercial (CC-BY-NC), so check each model's licence in the Model Manager before client work.</sub><br /><br />
-      <strong><a href="https://voicestudio.sh/pro?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section">See Pro plans →</a></strong>
-    </td>
-    <td width="50%" valign="top">
-      <a href="https://app.voicestudio.sh/?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section"><img src="docs/assets/voicestudio-cloud.svg" alt="" width="56" height="56" align="middle" /></a>&nbsp;&nbsp;<strong><a href="https://app.voicestudio.sh/?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section">VoiceStudio Cloud</a></strong><br /><br />
-      A hosted voice and dubbing API, coming soon. No GPU needed.
-      <ul>
-        <li>Speech, voice design and voice cloning with consent</li>
-        <li>Dubbing, transcription and audiobooks</li>
-        <li>Usage and credits by day or project</li>
-        <li>Long jobs that run on their own</li>
-      </ul>
-      <sub>Not available yet: join early access for free usage credits. The desktop app stays free and local.</sub><br /><br />
-      <strong><a href="https://app.voicestudio.sh/?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=project&amp;utm_content=readme-section">Join Cloud early access →</a></strong>
-    </td>
-  </tr>
-</table>
+Handover documentation for maintainers is in [docs/handover](docs/handover/HANDOVER.md).
+
+## Local-First Architecture & Model Licensing
+
+**Voice Suite** is a 100% local-first desktop and web application with zero required cloud accounts, subscriptions, or paid license tiers. All audio synthesis, voice cloning, transcription, and dubbing pipelines run directly on your hardware.
+
+- **Application License (GNU AGPL-3.0)**: The application code is free and open-source software under the <a href="LICENSE">GNU Affero General Public License v3.0</a> (AGPL-3.0-only). It is free for personal, internal, and commercial/production use. If you modify the application and distribute it or make it available to users over a network, you must offer the complete corresponding source code under the same AGPL-3.0 terms (see <a href="LICENSE-NOTICE.md">LICENSE-NOTICE.md</a>).
+- **Model Weights Licensing**: Model weights, tokenizers, and voice assets are governed by their own upstream licenses, which are distinct from the application license. For example, the default k2-fsa/OmniVoice pretrained weights are licensed for non-commercial use (CC-BY-NC), whereas engines such as Kokoro, Piper, and Faster-Whisper carry permissive open-source licenses (Apache-2.0 / MIT). Always review each model's license in the Model Manager before commercial deployment.
+- **Hardware Acceleration & Local Setup**: Optimized for Apple Silicon (Metal / MPS and MLX engines), NVIDIA CUDA, AMD ROCm, Vulkan GGUF runtimes, and multi-core CPU execution across macOS, Windows, and Linux. See Get started below for source setup instructions.
+- **Upstream Attribution**: Voice Suite is derived from <a href="https://github.com/debpalash/VoiceStudio">VoiceStudio</a> by Palash Debnath (debpalash/voicestudio) and integrates the <a href="https://github.com/k2-fsa/OmniVoice">OmniVoice</a> TTS architecture by Han Zhu (k2-fsa/OmniVoice, Apache-2.0).
 
 ## Platforms
+
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
 
 Experimental [Windows ROCm setup](docs/install/windows-rocm.md) supports selected RDNA 2 RX 6000 GPUs with targets `gfx1030`, `gfx1031` or `gfx1032`; RX 6500 XT (`gfx1034`) is excluded. GPU transcription uses a CTranslate2 build with native
 `gfx1031` kernels that this repository builds from upstream source and pins by
@@ -468,11 +440,11 @@ If `voicestudio.sh` is unreachable, run the script straight from the repository:
 `curl -fsSL https://raw.githubusercontent.com/debpalash/VoiceStudio/main/scripts/install.sh | sh`.
 Prerequisites and behavior: [installer guide](docs/install/script.md).
 
-**From source**
+**From source** (Voice Suite)
 
 ```bash
-git clone https://github.com/debpalash/VoiceStudio.git
-cd VoiceStudio
+git clone https://github.com/kierantrestain/Voice-suite.git
+cd Voice-suite
 bun run dev
 ```
 
@@ -516,6 +488,7 @@ The VoiceStudio app is free and needs no paid cloud. Sponsors keep it shipping: 
     <a href="https://github.com/debpalash/OpenGTM?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opengtm-dark.svg" /><img src="docs/sponsors/opengtm.svg" alt="OpenGTM" height="48" align="middle" /></picture></a>
     <a href="https://github.com/debpalash/Opal?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/opal-dark.svg" /><img src="docs/sponsors/opal.svg" alt="Opal" height="48" align="middle" /></picture></a>
     <a href="https://github.com/velixio/supermetry?utm_source=voicestudio&utm_medium=sponsor&utm_campaign=strategic-sponsor&utm_content=readme-logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/supermetry-dark.svg" /><img src="docs/sponsors/supermetry.svg" alt="Supermetry" height="48" align="middle" /></picture></a>
+    <a href="https://spicrawl.com?utm_source=voicestudio&amp;utm_medium=github_readme&amp;utm_campaign=special_sponsor&amp;utm_content=logo"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/spicrawl-dark.svg" /><img src="docs/sponsors/spicrawl.svg" alt="Spicrawl" height="48" align="middle" /></picture></a>
 </p>
 
 For sponsorship inquiries, contact [sponsor@voicestudio.sh](mailto:sponsor@voicestudio.sh).

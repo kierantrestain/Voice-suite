@@ -9,7 +9,7 @@ import type { BackendStatus, UpdateState } from '../../../preload/index.d';
 import { appVersion, getBridge, platformFamily } from './bridge';
 import { ExternalLink } from './external-link';
 
-const REPO = 'https://github.com/debpalash/VoiceStudio';
+const REPO = 'https://github.com/kierantrestain/Voice-suite';
 const INSTALL_GUIDES = {
   mac: `${REPO}/blob/main/docs/install/macos.md`,
   windows: `${REPO}/blob/main/docs/install/windows.md`,
@@ -90,10 +90,10 @@ export function SetupUpdateNotice() {
     state.status === 'error'
       ? t(updateErrorTitleKey(state), { version: state.availableVersion })
       : state.status === 'downloaded'
-      ? t('update.prompt_ready')
-      : state.status === 'downloading'
-        ? t('update.downloading', { pct: Math.round(state.progress) })
-        : t('update.prompt_available', { version: state.availableVersion });
+        ? t('update.prompt_ready')
+        : state.status === 'downloading'
+          ? t('update.downloading', { pct: Math.round(state.progress) })
+          : t('update.prompt_available', { version: state.availableVersion });
   return (
     <div
       role="status"

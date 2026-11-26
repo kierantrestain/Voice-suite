@@ -22,17 +22,26 @@ const defaultExecutableCandidates =
   process.platform === 'win32'
     ? targetArch === 'arm64'
       ? [
+          'electron/release/win-arm64-unpacked/Voice Suite.exe',
+          'electron/release/win-unpacked/Voice Suite.exe',
           'electron/release/win-arm64-unpacked/VoiceStudio.exe',
           'electron/release/win-unpacked/VoiceStudio.exe',
         ]
-      : ['electron/release/win-unpacked/VoiceStudio.exe']
+      : [
+          'electron/release/win-unpacked/Voice Suite.exe',
+          'electron/release/win-unpacked/VoiceStudio.exe',
+        ]
     : process.platform === 'darwin'
       ? targetArch === 'arm64'
         ? [
+            'electron/release/mac-arm64/Voice Suite.app/Contents/MacOS/Voice Suite',
+            'electron/release/mac/Voice Suite.app/Contents/MacOS/Voice Suite',
             'electron/release/mac-arm64/VoiceStudio.app/Contents/MacOS/VoiceStudio',
             'electron/release/mac/VoiceStudio.app/Contents/MacOS/VoiceStudio',
           ]
         : [
+            'electron/release/mac/Voice Suite.app/Contents/MacOS/Voice Suite',
+            'electron/release/mac-x64/Voice Suite.app/Contents/MacOS/Voice Suite',
             'electron/release/mac/VoiceStudio.app/Contents/MacOS/VoiceStudio',
             'electron/release/mac-x64/VoiceStudio.app/Contents/MacOS/VoiceStudio',
           ]
@@ -197,14 +206,14 @@ try {
     verifyManagedShutdown = true;
     console.log('PASS: packaged backend reached deferred startup before deliberate quit');
   } else if (setup) {
-    await window.getByText('VoiceStudio', { exact: true }).first().waitFor();
+    await window.getByText('Voice Suite', { exact: true }).first().waitFor();
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setSize(960, 640);
     });
     const setupLayout = await window.evaluate(() => {
       const header = document.querySelector('header.workspace-titlebar');
       const scroller = document.querySelector('[data-testid="backend-gate-scroll"]');
-      const brand = header?.textContent?.includes('VoiceStudio') ? header : null;
+      const brand = header?.textContent?.includes('Voice Suite') ? header : null;
       const headerRect = header?.getBoundingClientRect();
       const scrollRect = scroller?.getBoundingClientRect();
       return {

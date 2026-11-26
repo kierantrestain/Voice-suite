@@ -102,10 +102,12 @@ const hashes = await fileHashes(artifactPath, platform === 'linux');
 assert.equal(hashes.sha512, fileSha, 'Update metadata SHA-512 matches artifact bytes');
 
 const osToken = platform === 'win32' ? 'win' : platform === 'darwin' ? 'mac' : 'linux';
+const productName = JSON.parse(readFileSync(resolve(electronRoot, '../config/app.json'), 'utf8')).productName;
+const artifactPrefix = productName.replace(/[^A-Za-z0-9]+/g, '-');
 const artifactBrand =
   process.env.VOICESTUDIO_DISTRIBUTION === 'microsoft-store'
-    ? 'VoiceStudio-MicrosoftStore'
-    : 'VoiceStudio';
+    ? `${artifactPrefix}-MicrosoftStore`
+    : artifactPrefix;
 assert(
   fileUrl.startsWith(`${artifactBrand}-${expectedVersion}-${osToken}-${arch}.`),
   'Update artifact preserves the branded version/platform/architecture name',
@@ -134,7 +136,7 @@ if (platform === 'win32') {
   const updateRelease = channel.startsWith('electron-beta-') ? `v${version}` : 'latest';
   assert.equal(
     updateInfo,
-    `gh-releases-zsync|debpalash|VoiceStudio|${updateRelease}|VoiceStudio-*-linux-x64.AppImage.zsync`,
+    `gh-releases-zsync|debpalash|VoiceStudio|${updateRelease}|${artifactPrefix}-*-linux-x64.AppImage.zsync`,
     'External AppImage updaters follow the channel their image was built for',
   );
   const control = `${artifactPath}.zsync`;

@@ -249,7 +249,7 @@ final class SmokeTests: XCTestCase {
         XCTAssertEqual(light.value as? String, "Studio")
         light.tapReady()
         app.buttons["choice.option.signal"].tapReady()
-        XCTAssertEqual(light.value as? String, "VoiceStudio Original")
+        XCTAssertEqual(light.value as? String, "Voice Suite Studio")
     }
 
     @MainActor func testEveryTabRendersWhileHostInventoryIsLoading() throws {

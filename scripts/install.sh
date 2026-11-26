@@ -296,6 +296,16 @@ case "$OS" in
     linux) ASSET="$ASSET_PREFIX-$VS_VERSION-linux-x64.AppImage" ;;
 esac
 PACKAGE="$PACKAGE_DIR/$ASSET"
+if [ "$MODE" = main ] && [ ! -f "$PACKAGE" ]; then
+    case "$OS" in
+        mac) BRANDED_ASSET="Voice-Suite-$VS_VERSION-mac-$ARCH.dmg" ;;
+        linux) BRANDED_ASSET="Voice-Suite-$VS_VERSION-linux-x64.AppImage" ;;
+    esac
+    if [ -f "$PACKAGE_DIR/$BRANDED_ASSET" ]; then
+        ASSET="$BRANDED_ASSET"
+        PACKAGE="$PACKAGE_DIR/$ASSET"
+    fi
+fi
 if [ "$MODE" = binary ]; then
     BASE="$RELEASES/download/v$VS_VERSION"
     printf 'Downloading %s\n' "$ASSET"
@@ -314,8 +324,10 @@ if [ "$OS" = mac ]; then
     MOUNT="$WORK/mount"
     mkdir "$MOUNT"
     hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "$PACKAGE" >/dev/null || die "Could not open the disk image $ASSET (checksum was verified). Free some disk space and retry."
-    [ -d "$MOUNT/VoiceStudio.app" ] || die 'VoiceStudio.app is missing from the disk image.'
-    install_app "$MOUNT/VoiceStudio.app"
+    APP_BUNDLE="$MOUNT/VoiceStudio.app"
+    [ -d "$APP_BUNDLE" ] || APP_BUNDLE="$MOUNT/Voice Suite.app"
+    [ -d "$APP_BUNDLE" ] || die 'VoiceStudio.app is missing from the disk image.'
+    install_app "$APP_BUNDLE"
 else
     install_app "$PACKAGE"
 fi

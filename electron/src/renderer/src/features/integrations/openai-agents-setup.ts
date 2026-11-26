@@ -62,7 +62,7 @@ pipeline = VoicePipeline(
 `;
   return {
     file: 'voicestudio_agents.py',
-    docs: 'https://github.com/debpalash/VoiceStudio/blob/main/docs/agentic-voice.md#openai-agents-sdk',
+    docs: 'https://github.com/kierantrestain/Voice-suite/blob/main/docs/agentic-voice.md#openai-agents-sdk',
     text,
   };
 }

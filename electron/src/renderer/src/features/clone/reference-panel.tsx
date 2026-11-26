@@ -3,7 +3,7 @@ import { AgentFixButton } from '@/components/agent-fix-button';
 import type { useReferenceTranscript } from '@/hooks/use-reference-transcript';
 import { useReferenceAsrInstall } from '@/hooks/use-reference-asr-install';
 import { InstallProgress } from '@/components/model-install-progress';
-import { profileAudioUrl } from '@/lib/api/client';
+import { apiJson, profileAudioUrl } from '@/lib/api/client';
 import { PortraitSearch } from './portrait-search';
 import { ProfileImageEditor } from './profile-image-editor';
 import { ProfilePhoto } from './profile-photo';
@@ -16,6 +16,7 @@ import {
   MicIcon,
   PencilIcon,
   SaveIcon,
+  ShieldCheckIcon,
   XIcon,
 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
@@ -57,6 +58,8 @@ export function SaveProfileForm({
   const create = useCreateCloneProfile();
   const [image, setImage] = useState<File>();
   const [imageUrl, setImageUrl] = useState<string>();
+  const [consentBasis, setConsentBasis] = useState<'own_voice' | 'speaker_permission'>('own_voice');
+  const [consentConfirmed, setConsentConfirmed] = useState(true);
   useEffect(() => {
     if (!image) {
       setImageUrl(undefined);
@@ -68,11 +71,12 @@ export function SaveProfileForm({
   }, [image]);
   const nameId = useId();
   const errorId = useId();
+  const consentCheckboxId = useId();
 
   const form = useForm({
     defaultValues: { name: '' },
     onSubmit: async ({ value }) => {
-      if (transcribing || create.isPending) return;
+      if (transcribing || create.isPending || !consentConfirmed) return;
       try {
         const created = await create.mutateAsync({
           name: value.name.trim(),
@@ -84,6 +88,15 @@ export function SaveProfileForm({
           language: metadata?.language ?? language,
           seed: metadata?.seed,
         });
+        if (created?.id) {
+          await Promise.resolve(
+            apiJson(`/profiles/${encodeURIComponent(created.id)}/attestation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ basis: consentBasis }),
+            }),
+          ).catch(() => {});
+        }
         if (selectOnSave) {
           // A saved profile becomes the one identity source. Release the raw
           // upload and keep metadata returned by the server, including its
@@ -166,10 +179,81 @@ export function SaveProfileForm({
         <form.Subscribe selector={(state) => state.values.name}>
           {(name) => <PortraitSearch name={name} onSelect={setImage} />}
         </form.Subscribe>
+
+        <div
+          className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3.5 text-xs"
+          data-testid="voice-cloning-consent-section"
+        >
+          <div className="space-y-1">
+            <p className="flex items-center gap-1.5 font-semibold text-foreground">
+              <ShieldCheckIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>{t('voice_profile.consent_title')} — Voice Cloning Consent &amp; Rights</span>
+            </p>
+            <p className="text-muted-foreground">{t('voice_profile.attest_explain')}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t('voice_profile.consent_title')}>
+            <Button
+              type="button"
+              size="sm"
+              variant={consentBasis === 'own_voice' ? 'secondary' : 'outline'}
+              aria-pressed={consentBasis === 'own_voice'}
+              onClick={() => setConsentBasis('own_voice')}
+            >
+              {t('voice_profile.attest_own_voice')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={consentBasis === 'speaker_permission' ? 'secondary' : 'outline'}
+              aria-pressed={consentBasis === 'speaker_permission'}
+              onClick={() => setConsentBasis('speaker_permission')}
+            >
+              {t('voice_profile.attest_permission')}
+            </Button>
+          </div>
+
+          <label
+            htmlFor={consentCheckboxId}
+            className="flex cursor-pointer items-start gap-2 rounded-md border border-border/60 bg-muted/20 p-2.5"
+          >
+            <input
+              id={consentCheckboxId}
+              type="checkbox"
+              checked={consentConfirmed}
+              onChange={(event) => setConsentConfirmed(event.currentTarget.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="leading-snug text-foreground">
+              I confirm that I have explicit rights and speaker authorization to clone this voice
+              profile ({consentBasis === 'own_voice' ? t('voice_profile.attest_own_voice') : t('voice_profile.attest_permission')}).
+            </span>
+          </label>
+
+          {!consentConfirmed && (
+            <p role="alert" className="font-medium text-destructive">
+              Explicit voice cloning consent and speaker rights confirmation is required before
+              saving a voice profile.
+            </p>
+          )}
+
+          <div className="flex items-center gap-1.5 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
+            <ShieldCheckIcon className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+            <span>
+              Synthetic Audio Provenance: All cloned speech outputs carry local 16-bit AudioSeal
+              neural provenance watermarking (mark_synthetic).
+            </span>
+          </div>
+        </div>
+
         <div className="flex items-center justify-end gap-2">
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (
-              <Button type="submit" size="default" disabled={isSubmitting || transcribing}>
+              <Button
+                type="submit"
+                size="default"
+                disabled={isSubmitting || transcribing || !consentConfirmed}
+              >
                 {isSubmitting || transcribing ? (
                   <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
                 ) : (

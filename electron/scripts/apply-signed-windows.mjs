@@ -70,8 +70,8 @@ async function regenerateBlockmap(exe) {
   assert.equal(described, statSync(exe).size, `Blockmap describes the signed bytes of ${exe}`);
 }
 
-const signedExes = readdirSync(signedDir).filter((name) => /^VoiceStudio-.*\.exe$/.test(name));
-const releaseExes = readdirSync(releaseDir).filter((name) => /^VoiceStudio-.*\.exe$/.test(name));
+const signedExes = readdirSync(signedDir).filter((name) => /^(?:Voice-Suite|VoiceStudio)-.*\.exe$/.test(name));
+const releaseExes = readdirSync(releaseDir).filter((name) => /^(?:Voice-Suite|VoiceStudio)-.*\.exe$/.test(name));
 assert(releaseExes.length > 0, 'No installer to replace');
 assert.deepEqual(
   signedExes.sort(),
@@ -97,7 +97,7 @@ for (const name of releaseExes) {
     if (!text.includes(name)) continue;
     // files[0] entry: `- url: <name>` then 4-space `sha512:` and `size:`.
     text = text.replace(
-      /^(\s+- url:\s*['"]?VoiceStudio-[^\n]*\n)(\s{4}sha512:\s*)[^\n]*\n(\s{4}size:\s*)[^\n]*\n/m,
+      /^(\s+- url:\s*['"]?(?:Voice-Suite|VoiceStudio)-[^\n]*\n)(\s{4}sha512:\s*)[^\n]*\n(\s{4}size:\s*)[^\n]*\n/m,
       (_m, url, shaKey, sizeKey) => `${url}${shaKey}${sha512}\n${sizeKey}${size}\n`,
     );
     text = text.replace(/^sha512:\s*[^\n]*$/m, `sha512: ${sha512}`);

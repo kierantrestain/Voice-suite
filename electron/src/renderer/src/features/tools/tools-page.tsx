@@ -1,4 +1,14 @@
-import { AudioLinesIcon, AudioWaveformIcon, GitCompareArrowsIcon, WrenchIcon } from 'lucide-react';
+import {
+  ActivityIcon,
+  AudioLinesIcon,
+  AudioWaveformIcon,
+  GitCompareArrowsIcon,
+  ScissorsIcon,
+  SparklesIcon,
+  TargetIcon,
+  UploadIcon,
+  WrenchIcon,
+} from 'lucide-react';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
 import { ConvertVoice } from './convert-voice';
 import { SoundEffects } from './sound-effects';
@@ -7,12 +17,15 @@ import { CompareVoices } from './compare-voices';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { SparklesIcon, TargetIcon, ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { DisabledReason, firstReason } from '@/components/disabled-reason';
-import { apiJson, describeError } from '@/lib/api/client';
+import { SaveAudioButton } from '@/components/save-audio-button';
+import { WaveformPlayer } from '@/components/waveform-player';
+import { apiFetch, apiJson, describeError } from '@/lib/api/client';
+import { useLatestOutput } from '@/lib/store/output';
 import { LanguagePicker } from '@/features/clone/language-picker';
 import { LANG_CODES } from '@shared/utils/languages';
 const options = LANG_CODES.map((item) => item.label);
@@ -45,6 +58,7 @@ export function ToolsPage() {
   const [comparing, setComparing] = useState(false);
   const [converting, setConverting] = useState(false);
   const [effects, setEffects] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [selected, setSelected] = useState<Tool>(tools[0]);
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -62,12 +76,19 @@ export function ToolsPage() {
             <Button
               key={tool.id}
               className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 font-normal [&_svg]:text-muted-foreground"
-              variant={!effects && !converting && !comparing && selected.id === tool.id ? 'secondary' : 'ghost'}
-              aria-pressed={!effects && !converting && !comparing && selected.id === tool.id}
+              variant={
+                !effects && !converting && !comparing && !finishing && selected.id === tool.id
+                  ? 'secondary'
+                  : 'ghost'
+              }
+              aria-pressed={
+                !effects && !converting && !comparing && !finishing && selected.id === tool.id
+              }
               onClick={() => {
                 setEffects(false);
                 setConverting(false);
                 setComparing(false);
+                setFinishing(false);
                 setSelected(tool);
               }}
             >
@@ -77,11 +98,26 @@ export function ToolsPage() {
           ))}
           <Button
             className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 font-normal [&_svg]:text-muted-foreground"
+            variant={!effects && !converting && !comparing && finishing ? 'secondary' : 'ghost'}
+            aria-pressed={!effects && !converting && !comparing && finishing}
+            onClick={() => {
+              setEffects(false);
+              setConverting(false);
+              setComparing(false);
+              setFinishing(true);
+            }}
+          >
+            <ScissorsIcon />
+            Audio Finishing &amp; Trim
+          </Button>
+          <Button
+            className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 font-normal [&_svg]:text-muted-foreground"
             variant={!effects && !converting && comparing ? 'secondary' : 'ghost'}
             aria-pressed={!effects && !converting && comparing}
             onClick={() => {
               setEffects(false);
               setConverting(false);
+              setFinishing(false);
               setComparing(true);
             }}
           >
@@ -94,6 +130,8 @@ export function ToolsPage() {
             aria-pressed={!effects && converting}
             onClick={() => {
               setEffects(false);
+              setComparing(false);
+              setFinishing(false);
               setConverting(true);
             }}
           >
@@ -104,7 +142,12 @@ export function ToolsPage() {
             className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 font-normal [&_svg]:text-muted-foreground"
             variant={effects ? 'secondary' : 'ghost'}
             aria-pressed={effects}
-            onClick={() => setEffects(true)}
+            onClick={() => {
+              setComparing(false);
+              setConverting(false);
+              setFinishing(false);
+              setEffects(true);
+            }}
           >
             <AudioLinesIcon />
             {t('sfx.title')}
@@ -117,11 +160,332 @@ export function ToolsPage() {
             <ConvertVoice />
           ) : comparing ? (
             <CompareVoices />
+          ) : finishing ? (
+            <AudioFinishingTool />
           ) : (
             <ToolForm key={selected.id} tool={selected} />
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function AudioFinishingTool() {
+  const { t } = useTranslation();
+  const latestOutput = useLatestOutput();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string>('');
+  const [finishedUrl, setFinishedUrl] = useState<string>('');
+  const [abMode, setAbMode] = useState<'A' | 'B'>('A');
+  const [startSeconds, setStartSeconds] = useState<string>('0');
+  const [endSeconds, setEndSeconds] = useState<string>('');
+  const [fadeMs, setFadeMs] = useState<string>('15');
+  const [targetDbfs, setTargetDbfs] = useState<string>('-2.0');
+  const [trimSilence, setTrimSilence] = useState<boolean>(true);
+  const [silenceThresholdDb, setSilenceThresholdDb] = useState<string>('-42');
+  const [highpassHz, setHighpassHz] = useState<string>('80');
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setSourceUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setSourceUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  useEffect(() => {
+    return () => {
+      if (finishedUrl) URL.revokeObjectURL(finishedUrl);
+    };
+  }, [finishedUrl]);
+
+  const loadFile = (next: File) => {
+    setError(null);
+    if (finishedUrl) {
+      URL.revokeObjectURL(finishedUrl);
+      setFinishedUrl('');
+    }
+    setAbMode('A');
+    setFile(next);
+  };
+
+  const loadLatestTake = () => {
+    if (!latestOutput.result?.blob) return;
+    const takeFile = new File(
+      [latestOutput.result.blob],
+      `voicesuite-${latestOutput.result.id ?? 'take'}.wav`,
+      { type: 'audio/wav' },
+    );
+    loadFile(takeFile);
+  };
+
+  const runProcess = async (mode: 'finish' | 'trim') => {
+    if (!file || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      let currentBlob: Blob = file;
+      const startVal = Number(startSeconds);
+      const endVal = endSeconds.trim() ? Number(endSeconds) : null;
+      const fadeVal = Number(fadeMs);
+      const hasTrim =
+        mode === 'trim' ||
+        (Number.isFinite(startVal) && startVal > 0) ||
+        (endVal !== null && Number.isFinite(endVal) && endVal > 0);
+
+      if (hasTrim) {
+        const trimForm = new FormData();
+        trimForm.append('audio', currentBlob, file.name || 'audio.wav');
+        trimForm.append('start_seconds', String(Number.isFinite(startVal) ? Math.max(0, startVal) : 0));
+        if (endVal !== null && Number.isFinite(endVal) && endVal > 0) {
+          trimForm.append('end_seconds', String(endVal));
+        }
+        trimForm.append('fade_ms', String(Number.isFinite(fadeVal) ? Math.max(0, fadeVal) : 15));
+        const trimRes = await apiFetch('/tools/trim-audio', {
+          method: 'POST',
+          body: trimForm,
+        });
+        currentBlob = await trimRes.blob();
+      }
+
+      if (mode === 'finish') {
+        const finishForm = new FormData();
+        finishForm.append('audio', currentBlob, file.name || 'audio.wav');
+        finishForm.append(
+          'target_dbfs',
+          String(Number.isFinite(Number(targetDbfs)) ? Number(targetDbfs) : -2.0),
+        );
+        finishForm.append('trim_silence', String(trimSilence));
+        finishForm.append(
+          'silence_threshold_db',
+          String(Number.isFinite(Number(silenceThresholdDb)) ? Number(silenceThresholdDb) : -42.0),
+        );
+        finishForm.append(
+          'denoise_highpass_hz',
+          String(Number.isFinite(Number(highpassHz)) ? Number(highpassHz) : 80.0),
+        );
+        const finishRes = await apiFetch('/tools/finish-audio', {
+          method: 'POST',
+          body: finishForm,
+        });
+        currentBlob = await finishRes.blob();
+      }
+
+      const nextUrl = URL.createObjectURL(currentBlob);
+      if (finishedUrl) URL.revokeObjectURL(finishedUrl);
+      setFinishedUrl(nextUrl);
+      setAbMode('B');
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const suggestedName = file
+    ? file.name.replace(/\.wav$/i, '') + '-finished.wav'
+    : 'voicesuite-finished.wav';
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div>
+        <h2 className="text-lg font-medium tracking-[-0.015em]">Audio finishing and waveform editor</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Inspect waveforms, trim start and end points with smooth edge fades, remove low-end rumble and
+          edge silence, normalize loudness, and A/B compare original against finished audio.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".wav,audio/wav"
+          className="sr-only"
+          onChange={(event) => {
+            const chosen = event.target.files?.[0];
+            if (chosen) loadFile(chosen);
+            event.target.value = '';
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <UploadIcon />
+          {file ? file.name : t('clone.upload_audio')}
+        </Button>
+        {latestOutput.result?.blob && (
+          <Button type="button" variant="ghost" disabled={busy} onClick={loadLatestTake}>
+            Load latest take
+          </Button>
+        )}
+      </div>
+
+      {sourceUrl && (
+        <div className="space-y-4 rounded-xl border border-border/70 bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={abMode === 'A' ? 'secondary' : 'ghost'}
+                className="rounded-md"
+                aria-pressed={abMode === 'A'}
+                onClick={() => setAbMode('A')}
+              >
+                Original (A)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={abMode === 'B' ? 'secondary' : 'ghost'}
+                className="rounded-md"
+                aria-pressed={abMode === 'B'}
+                disabled={!finishedUrl}
+                onClick={() => setAbMode('B')}
+              >
+                Finished (B)
+              </Button>
+            </div>
+            {finishedUrl && (
+              <SaveAudioButton url={finishedUrl} suggestedName={suggestedName} />
+            )}
+          </div>
+          <WaveformPlayer
+            key={abMode === 'B' && finishedUrl ? finishedUrl : sourceUrl}
+            src={abMode === 'B' && finishedUrl ? finishedUrl : sourceUrl}
+            source="tools-finishing"
+            height={56}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-card/50 p-4 sm:grid-cols-3">
+        <label className="block space-y-1.5 text-sm">
+          <span className="text-muted-foreground">Trim start (s)</span>
+          <Input
+            type="number"
+            min="0"
+            step="0.05"
+            className="font-mono tabular-nums"
+            value={startSeconds}
+            disabled={busy}
+            onChange={(e) => setStartSeconds(e.target.value)}
+          />
+        </label>
+        <label className="block space-y-1.5 text-sm">
+          <span className="text-muted-foreground">Trim end (s, optional)</span>
+          <Input
+            type="number"
+            min="0"
+            step="0.05"
+            className="font-mono tabular-nums"
+            placeholder="End of clip"
+            value={endSeconds}
+            disabled={busy}
+            onChange={(e) => setEndSeconds(e.target.value)}
+          />
+        </label>
+        <label className="block space-y-1.5 text-sm">
+          <span className="text-muted-foreground">Edge fade (ms)</span>
+          <Input
+            type="number"
+            min="0"
+            max="1000"
+            step="5"
+            className="font-mono tabular-nums"
+            value={fadeMs}
+            disabled={busy}
+            onChange={(e) => setFadeMs(e.target.value)}
+          />
+        </label>
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card/50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Trim leading and trailing silence</p>
+            <p className="text-xs text-muted-foreground">
+              Retains 50 ms natural speech padding around voiced audio
+            </p>
+          </div>
+          <Switch
+            checked={trimSilence}
+            disabled={busy}
+            onCheckedChange={(checked) => setTrimSilence(Boolean(checked))}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <label className="block space-y-1.5 text-sm">
+            <span className="text-muted-foreground">Target peak (dBFS)</span>
+            <Input
+              type="number"
+              min="-24"
+              max="-0.5"
+              step="0.5"
+              className="font-mono tabular-nums"
+              value={targetDbfs}
+              disabled={busy}
+              onChange={(e) => setTargetDbfs(e.target.value)}
+            />
+          </label>
+          <label className="block space-y-1.5 text-sm">
+            <span className="text-muted-foreground">Silence floor (dBFS)</span>
+            <Input
+              type="number"
+              min="-70"
+              max="-15"
+              step="1"
+              className="font-mono tabular-nums"
+              value={silenceThresholdDb}
+              disabled={busy || !trimSilence}
+              onChange={(e) => setSilenceThresholdDb(e.target.value)}
+            />
+          </label>
+          <label className="block space-y-1.5 text-sm">
+            <span className="text-muted-foreground">High-pass filter (Hz)</span>
+            <Input
+              type="number"
+              min="0"
+              max="400"
+              step="10"
+              className="font-mono tabular-nums"
+              value={highpassHz}
+              disabled={busy}
+              onChange={(e) => setHighpassHz(e.target.value)}
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          disabled={!file || busy}
+          onClick={() => void runProcess('finish')}
+        >
+          {busy ? t('common.loading') : 'Apply audio finishing'}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!file || busy}
+          onClick={() => void runProcess('trim')}
+        >
+          Trim Only
+        </Button>
+      </div>
+
+      {error && <PipelineFailure fallback={error} onDismiss={() => setError(null)} />}
     </div>
   );
 }

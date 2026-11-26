@@ -6,10 +6,10 @@ import { runRendererTask } from '@/lib/global-error-recovery';
 import { REPO_URL } from '@shared/utils/contactLinks';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-const STARS_URL = 'https://api.github.com/repos/debpalash/VoiceStudio';
+const STARS_URL = 'https://api.github.com/repos/kierantrestain/Voice-suite';
 const REFRESH_MS = 20 * 60 * 1000;
-// The last bundled count remains visible when GitHub cannot be reached.
-const BUNDLED_STARS = 43_638;
+// Voice Suite ships no bundled count: an upstream figure would misstate this
+// repository's, so the badge shows a count only once GitHub returned one.
 const formatCount = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 const formatExact = new Intl.NumberFormat('en');
 
@@ -63,10 +63,13 @@ export function GithubStar() {
           <StarIcon aria-hidden="true" className="size-3.5" />
           <span>{t('support.star_short')}</span>
         </span>
-        <span className="github-star-count">{formatCount.format(stars.data ?? BUNDLED_STARS)}</span>
+        {stars.data !== undefined ? (
+          <span className="github-star-count">{formatCount.format(stars.data)}</span>
+        ) : null}
       </TooltipTrigger>
       <TooltipContent surface="theme" side="bottom">
-        {t('support.star_github')} · {formatExact.format(stars.data ?? BUNDLED_STARS)}
+        {t('support.star_github')}
+        {stars.data !== undefined ? ` · ${formatExact.format(stars.data)}` : ''}
       </TooltipContent>
     </Tooltip>
   );

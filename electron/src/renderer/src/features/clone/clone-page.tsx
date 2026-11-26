@@ -29,6 +29,7 @@ import { ScriptPanel } from './script-panel';
 import { useCloneDemo } from '@/hooks/use-clone-demo';
 import { runRendererTask } from '@/lib/global-error-recovery';
 import { SynthesisDock } from '@/components/synthesis-dock';
+import { ModelRightsIndicator } from '@/features/settings/model-rights-indicator';
 import { isSynthesizeShortcut } from './synthesize-shortcut';
 
 const DEMO_PROFILE_ID = 'demo0001';
@@ -155,9 +156,10 @@ export function ClonePage() {
           >
             <div className="flex min-w-0 items-center gap-2">
               <SidebarToggle />
-              <h1 className="truncate text-sm font-medium">{t('clone.title')}</h1>
+              <h1 className="shrink-0 truncate text-sm font-medium">{t('clone.title')}</h1>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1.5">
+              <ModelRightsIndicator engine={activeTts} compact className="hidden 2xl:flex" />
               <SupportShortcut />
               <Button
                 variant="ghost"

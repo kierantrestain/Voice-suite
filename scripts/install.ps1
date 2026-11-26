@@ -27,13 +27,13 @@ if ($Uninstall) { $mode = 'uninstall' }
 if ($mode -eq 'uninstall') {
     if ($Main -or $Source -or $vsVersion) { throw 'Uninstall cannot be combined with installation options; clear VOICESTUDIO_VERSION first.' }
     $keys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
-    $entries = @(Get-ItemProperty $keys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^VoiceStudio(?: \d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)?$' })
+    $entries = @(Get-ItemProperty $keys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^(?:Voice Suite|VoiceStudio)(?: \d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)?$' })
     foreach ($entry in $entries) {
         $command = [string]$entry.UninstallString
         if ($command -notmatch '^"([^"]+\.exe)"(?:\s+(/currentuser|/allusers))?\s*$') { continue }
         $exe = $Matches[1]
         $scope = $Matches[2]
-        if ((Split-Path $exe -Leaf) -ne 'Uninstall VoiceStudio.exe' -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
+        if ((Split-Path $exe -Leaf) -notin @('Uninstall Voice Suite.exe', 'Uninstall VoiceStudio.exe') -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
         $launch = @{ FilePath = $exe; Wait = $true; PassThru = $true }
         $arguments = @()
         if ($scope) { $arguments += $scope }
@@ -107,6 +107,14 @@ try {
     $asset = "$prefix-$vsVersion-win-x64.exe"
     if ($onArm -and $mode -eq 'main') { $asset = "$prefix-$vsVersion-win-arm64.exe" }
     $package = Join-Path $packageDir $asset
+    if ($mode -eq 'main' -and -not (Test-Path $package)) {
+        $brandedAsset = if ($onArm) { "Voice-Suite-$vsVersion-win-arm64.exe" } else { "Voice-Suite-$vsVersion-win-x64.exe" }
+        $brandedPackage = Join-Path $packageDir $brandedAsset
+        if (Test-Path $brandedPackage) {
+            $asset = $brandedAsset
+            $package = $brandedPackage
+        }
+    }
     if ($mode -eq 'binary') {
         $base = "https://github.com/debpalash/VoiceStudio/releases/download/v$vsVersion"
         $downloaded = $false

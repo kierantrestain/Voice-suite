@@ -13,6 +13,7 @@ import {
 import { apiJson } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ModelLicenseIcon } from './model-license-icon';
+import { AppVsModelLicenseNotice } from './model-rights-indicator';
 import { LicenceAcceptanceFooter, toAcceptable } from './model-licence-acceptance';
 import {
   LICENCE_DIALOG_SURFACE,
@@ -364,6 +365,7 @@ export function ModelLicense({
             closeDisabled={busy === 'commit'}
           >
             <div className="space-y-3 p-4">
+              <AppVsModelLicenseNotice repoId={repoId} info={currentInfo} />
               <ModelLicenceView
                 details={details.data}
                 infoFallback={info}

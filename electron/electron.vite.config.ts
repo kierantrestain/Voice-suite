@@ -25,6 +25,7 @@ const define = {
   __BUILD_COMMIT__: JSON.stringify(buildCommit()),
   __DISTRIBUTION_TARGET__: JSON.stringify(DISTRIBUTION_TARGET),
   __WEB_DEPLOYMENT__: false,
+  __HOSTED_FRONTEND__: false,
 };
 
 // OMNIVOICE_UI_PORT is canonical (the backend reads it for its origin

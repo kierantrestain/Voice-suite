@@ -73,7 +73,7 @@ try {
     [960, 600],
   ]) {
     await page.setViewportSize({ width, height });
-    assert.equal(await navigation.getByRole('link').count(), 9);
+    assert.equal(await navigation.getByRole('link').count(), 11);
     assert.equal(await page.getByRole('menu').count(), 0);
     const bounds = await navigation.boundingBox();
     assert.ok(bounds && bounds.width <= (await sidebar.boundingBox()).width);
@@ -97,7 +97,7 @@ try {
           (el) => el.scrollHeight <= el.clientHeight || getComputedStyle(el).overflowY === 'auto',
         ),
     );
-    const footer = await sidebar.getByRole('link', { name: 'Settings', exact: true }).boundingBox();
+    const footer = await sidebar.getByRole('link', { name: 'Settings', exact: true }).last().boundingBox();
     assert.ok(
       footer && footer.y + footer.height <= height,
       `Settings footer escaped ${width}x${height}: ${JSON.stringify(footer)}`,
@@ -169,7 +169,7 @@ try {
       });
     });
     await macStartupPage.goto(ui + '/#/clone');
-    const startupBrand = macStartupPage.getByRole('banner').getByText('VoiceStudio', {
+    const startupBrand = macStartupPage.getByRole('banner').getByText('Voice Suite', {
       exact: true,
     });
     await startupBrand.waitFor();
@@ -236,17 +236,17 @@ try {
     await macNotifications.locator('button:has(.lucide-bell)').click();
     await macPage.locator('[data-slot=popover-content][data-open]').waitFor({ state: 'visible' });
     await macPage.keyboard.press('Escape');
-    const brandLink = macSidebar.getByRole('link', { name: /^VoiceStudio v\S+/ });
+    const brandLink = macSidebar.getByRole('link', { name: /^Voice Suite v\S+/ });
     const brandBounds = await brandLink.boundingBox();
     // The traffic lights have their own row above the brand.
     assert.ok(brandBounds && brandBounds.y >= 28, 'macOS brand must sit below the traffic lights');
     assert.ok(
       await brandLink
-        .getByText('VoiceStudio', { exact: true })
+        .getByText('Voice Suite', { exact: true })
         .evaluate((element) => element.scrollWidth <= element.clientWidth),
-      'macOS titlebar must show the complete VoiceStudio wordmark',
+      'macOS titlebar must show the complete Voice Suite wordmark',
     );
-    const expandedSettings = macSidebar.getByRole('link', { name: 'Settings', exact: true });
+    const expandedSettings = macSidebar.getByRole('link', { name: 'Settings', exact: true }).last();
     const expandedDevice = macSidebar.getByRole('button', { name: /^Local:/ });
     const expandedSettingsBounds = await expandedSettings.boundingBox();
     const expandedDeviceBounds = await expandedDevice.boundingBox();
@@ -289,6 +289,7 @@ try {
     );
     const compactSettingsBounds = await compactMacSidebar
       .getByRole('link', { name: 'Settings', exact: true })
+      .last()
       .boundingBox();
     const compactDeviceBounds = await compactMacSidebar
       .getByRole('button', { name: /^Local:/ })

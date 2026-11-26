@@ -47,7 +47,7 @@ class ContractTest {
         assertTrue(l.has("themeAppearance.default"))
         val palettes=com.voicestudio.mobile.features.paletteChoices(l).toMap()
         assertEquals(l.t("themeAppearance.default"),palettes["default"])
-        assertEquals("VoiceStudio Original",palettes["signal"])
+        assertEquals("Voice Suite Studio",palettes["signal"])
         assertEquals("VoiceStudio Classic",palettes["heritage"])
         assertEquals("Connect",l.t("mobile.tabs.connect"))
         val guidance=l.t("mobile.dictate.install_model_size",mapOf("model" to "Small ASR","size" to 0.6))

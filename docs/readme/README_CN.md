@@ -111,6 +111,18 @@
 
 <p align="center"><a href="https://discord.gg/bzQavDfVV9"><img src="../../docs/assets/discord-community.svg" alt="Come say hello! Join us on Discord" height="64" /></a></p>
 
+## Get Voice Suite
+
+Voice Suite is built from this repository ([kierantrestain/Voice-suite](https://github.com/kierantrestain/Voice-suite)). It does not yet publish its own signed installers; the platform installers listed under [Platforms](#platforms) are the upstream VoiceStudio builds.
+
+| Route | What runs where | Guide |
+|---|---|---|
+| **Hosted web app** (Vercel) | The interface is a static site; generation, cloning, dubbing and transcription run on a Voice Suite backend you host (Docker, CPU or NVIDIA GPU) and connect in **Settings → Sharing → Remote backend** with its API key | [Deployment](../../docs/handover/DEPLOYMENT.md) |
+| **Inference backend** (Docker) | `docker compose -f deploy/inference-backend/docker-compose.yml up -d --build` | [Deployment](../../docs/handover/DEPLOYMENT.md#2-inference-backend) |
+| **From source** (desktop or browser) | `git clone https://github.com/kierantrestain/Voice-suite.git`, then `bun run dev:web` or `bun run desktop` | [Get started](#get-started) |
+
+Handover documentation for maintainers is in [docs/handover](../../docs/handover/HANDOVER.md).
+
 ## Pro 和 Cloud
 
 以上功能全部免费，在你自己的硬件上运行，无需账号。Pro 和 Cloud 均为可选。
@@ -147,6 +159,8 @@
 <a id="platforms"></a>
 
 ## 支持平台
+
+> The installers, Homebrew tap, Docker images and phone builds below are published by the upstream [VoiceStudio](https://github.com/debpalash/VoiceStudio) project, which Voice Suite is derived from. Use [Get Voice Suite](#get-voice-suite) for this product.
 
 选择你的系统，再展开相应的安装方式。
 
@@ -473,8 +487,8 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --uninstall       # 卸载�
 **从源码安装**
 
 ```bash
-git clone https://github.com/debpalash/VoiceStudio.git
-cd VoiceStudio
+git clone https://github.com/kierantrestain/Voice-suite.git
+cd Voice-suite
 bun run dev
 ```
 

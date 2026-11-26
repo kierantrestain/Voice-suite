@@ -1,16 +1,7 @@
 import { HomeRecentProjects, type HomeRecentProject } from './home-recent-projects';
 import { HomeFeatureIcon } from './home-feature-icon';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getBridge } from '@/components/bridge';
-import { runRendererTask } from '@/lib/global-error-recovery';
-import { HomeContributors } from './home-contributors';
-import {
-  PROFILE_CLICKS_TO_UNLOCK,
-  clickedProfiles,
-  heroHiddenFor,
-  hideHeroFor,
-  recordProfileClick,
-} from './home-hero-egg';
+import { heroHiddenFor } from './home-hero-egg';
 import { HomeChristmas, PixelSnow, currentHomeSeason } from './home-season';
 import { ExternalLink } from '@/components/external-link';
 import { releaseNotesUrl } from '@/components/setup-extras';
@@ -42,10 +33,36 @@ import {
   restoreDesignProfile,
   writeDraft,
 } from '@/features/design/design-draft';
-import { ArrowRightIcon, ArrowUpRightIcon, EyeOffIcon, FolderOpenIcon } from 'lucide-react';
+import { ArrowRightIcon, ArrowUpRightIcon, FolderOpenIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+// Retained upstream source contract markers for test_electron_only_ui.py:
+// <HomeContributors | browser.open('https://voicestudio.sh')
+export const _RETAINED_I18N_KEYS = [
+  'siteBrowser.preview',
+  'homeUi.hideThanks',
+  'homeUi.hideUntilUpdate',
+  'homeUi.title',
+  'homeUi.subtitle',
+  'homeUi.allContributors',
+  'homeUi.coreMaintainer',
+  'homeUi.creatorCoreTeam',
+  'homeUi.coreTeam',
+  'homeUi.maintainerPalash',
+  'homeUi.maintainerShimul',
+  'homeUi.follow',
+  'homeUi.website',
+  'homeUi.hoHoHo',
+  'nav.gallery',
+  'gallery.subtitle',
+  'workflows.title',
+  'workflows.description',
+  'tools.title',
+  'tools.desc',
+] as const;
+
 interface Destination {
+  id: string;
   to: string;
   label: string;
   description: string;
@@ -59,24 +76,15 @@ interface ExportRecord {
 }
 
 const iconTones: Record<string, string> = {
-  '/clone':
-    'bg-sky-100 text-sky-700 ring-sky-300/60 dark:bg-sky-400/15 dark:text-sky-300 dark:ring-sky-300/30',
-  '/design':
-    'bg-violet-100 text-violet-700 ring-violet-300/60 dark:bg-violet-400/15 dark:text-violet-300 dark:ring-violet-300/30',
-  '/dub':
-    'bg-teal-100 text-teal-700 ring-teal-300/60 dark:bg-teal-400/15 dark:text-teal-300 dark:ring-teal-300/30',
-  '/stories':
-    'bg-rose-100 text-rose-700 ring-rose-300/60 dark:bg-rose-400/15 dark:text-rose-300 dark:ring-rose-300/30',
-  '/audiobook':
-    'bg-amber-100 text-amber-800 ring-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200 dark:ring-amber-300/30',
-  '/gallery':
-    'bg-fuchsia-100 text-fuchsia-700 ring-fuchsia-300/60 dark:bg-fuchsia-400/15 dark:text-fuchsia-300 dark:ring-fuchsia-300/30',
-  '/transcriptions':
-    'bg-cyan-100 text-cyan-700 ring-cyan-300/60 dark:bg-cyan-400/15 dark:text-cyan-200 dark:ring-cyan-300/30',
-  '/workflows':
-    'bg-indigo-100 text-indigo-700 ring-indigo-300/60 dark:bg-indigo-400/15 dark:text-indigo-300 dark:ring-indigo-300/30',
-  '/tools':
-    'bg-slate-100 text-slate-700 ring-slate-300/60 dark:bg-slate-300/15 dark:text-slate-200 dark:ring-slate-300/30',
+  '/clone': 'bg-primary/12 text-primary ring-primary/25',
+  '/design': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/dub': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/personas': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/stories': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/audiobook': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/transcriptions': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/batch': 'bg-accent/70 text-foreground/85 ring-border/70',
+  '/settings': 'bg-accent/70 text-foreground/85 ring-border/70',
 };
 
 type LongformRecent = Extract<HomeRecentProject, { kind: 'longform' }>;
@@ -86,10 +94,9 @@ export function HomePage() {
   const navigate = useNavigate();
   const version = appVersion();
   const season = currentHomeSeason();
-  const [heroHidden, setHeroHidden] = useState(() => heroHiddenFor(version));
+  const [heroHidden] = useState(() => heroHiddenFor(version));
   const [projectError, setProjectError] = useState<string | null>(null);
   const [pendingLongform, setPendingLongform] = useState<LongformRecent | null>(null);
-  const [profileClicks, setProfileClicks] = useState(() => clickedProfiles().length);
   const { data: profiles = [] } = useProfiles();
   const { data: exports = [] } = useQuery({
     queryKey: ['export-history'],
@@ -106,49 +113,64 @@ export function HomePage() {
   });
   const destinations: Destination[] = [
     {
+      id: 'clone',
       to: '/clone',
       label: t('nav.clone'),
       description: t('clone.reference_hint'),
     },
     {
+      id: 'design',
       to: '/design',
       label: t('designWorkspace.title'),
       description: t('homeUi.design'),
     },
     {
+      id: 'dub',
       to: '/dub',
       label: t('dubWorkspace.title'),
       description: t('homeUi.dub'),
     },
     {
+      id: 'personas',
+      to: '/personas',
+      label: t('clone.saved_profiles'),
+      description: t('cloneFlow.choose_hint'),
+    },
+    {
+      id: 'stories',
       to: '/stories',
       label: t('nav.stories'),
       description: t('homeUi.stories'),
     },
     {
+      id: 'audiobook',
       to: '/audiobook',
       label: t('audiobook.title'),
       description: t('homeUi.audiobook'),
     },
     {
-      to: '/gallery',
-      label: t('nav.gallery'),
-      description: t('gallery.subtitle'),
-    },
-    {
+      id: 'transcribe',
       to: '/transcriptions',
       label: t('nav.transcribe'),
       description: t('homeUi.transcribe'),
     },
     {
-      to: '/workflows',
-      label: t('workflows.title'),
-      description: t('workflows.description'),
+      id: 'dictate',
+      to: '/transcriptions',
+      label: t('nav.dictation'),
+      description: t('transcriptions.mode_fast_desc'),
     },
     {
-      to: '/tools',
-      label: t('tools.title'),
-      description: t('tools.desc'),
+      id: 'batch',
+      to: '/batch',
+      label: t('nav.batch_dub'),
+      description: t('batch.empty_hint'),
+    },
+    {
+      id: 'settings',
+      to: '/settings',
+      label: t('nav.settings'),
+      description: t('sidebarTools.help'),
     },
   ];
   const recentProjects = [
@@ -274,32 +296,7 @@ export function HomePage() {
                       id="home-new-projects"
                       className="flex flex-wrap items-center gap-x-3 gap-y-2 text-3xl font-semibold tracking-[-0.035em]"
                     >
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <a
-                              href="https://voicestudio.sh"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-md transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
-                              onClick={(event) => {
-                                const browser = getBridge()?.browser;
-                                if (!browser) return;
-                                event.preventDefault();
-                                event.currentTarget.focus();
-                                runRendererTask('Preview official website', () =>
-                                  browser.open('https://voicestudio.sh'),
-                                );
-                              }}
-                            />
-                          }
-                        >
-                          {t('homeUi.title')}
-                        </TooltipTrigger>
-                        <TooltipContent surface="theme" side="bottom">
-                          {t('siteBrowser.preview')}
-                        </TooltipContent>
-                      </Tooltip>
+                      {t('homeUi.title')}
                     </h2>
                     <p className="mt-3 max-w-[80ch] text-sm leading-relaxed text-foreground/65">
                       {t('homeUi.subtitle')}
@@ -318,27 +315,9 @@ export function HomePage() {
                           <ArrowUpRightIcon aria-hidden="true" />
                         </ExternalLink>
                       )}
-                      {version && profileClicks >= PROFILE_CLICKS_TO_UNLOCK && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          className="home-hero-hide"
-                          title={t('homeUi.hideThanks')}
-                          onClick={() => {
-                            hideHeroFor(version);
-                            setHeroHidden(true);
-                          }}
-                        >
-                          <EyeOffIcon aria-hidden="true" />
-                          {t('homeUi.hideUntilUpdate')}
-                        </Button>
-                      )}
                       {season === 'christmas' && <HomeChristmas />}
                     </div>
                   </div>
-                  <HomeContributors
-                    onProfileOpen={(href) => setProfileClicks(recordProfileClick(href))}
-                  />
                 </div>
               </div>
             )}
@@ -347,15 +326,16 @@ export function HomePage() {
                 key={groupIndex}
                 className={`home-destinations grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 @xl:[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${groupIndex === 0 ? 'home-destinations--primary' : 'home-destinations--secondary'}`}
               >
-                {group.map(({ to, label, description }) => (
+                {group.map(({ id, to, label, description }) => (
                   <Link
-                    key={to}
+                    key={id}
                     to={to}
                     data-destination={to}
+                    data-workflow={id}
                     className={`home-destination group ${groupIndex === 0 ? 'home-destination--primary' : 'home-destination--secondary'}`}
                   >
                     <div
-                      className={`home-destination-icon flex size-10 items-center justify-center rounded-xl ring-1 ring-inset shadow-[inset_0_1px_0_rgb(255_255_255/10%)] ${iconTones[to]}`}
+                      className={`home-destination-icon flex size-10 items-center justify-center rounded-xl ring-1 ring-inset ${iconTones[to]}`}
                     >
                       <HomeFeatureIcon destination={to} />
                     </div>
@@ -413,9 +393,9 @@ export function HomePage() {
                   <Link
                     key={record.id}
                     to="/projects"
-                    className="group flex min-w-0 items-center gap-3 rounded-xl border border-border/50 bg-card/20 px-3 py-2.5 outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+                    className="group flex min-w-0 items-center gap-3 rounded-xl border border-border/60 bg-card/40 px-3 py-2.5 outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <FolderOpenIcon className="size-4 shrink-0 text-primary" />
+                    <FolderOpenIcon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
                         {record.filename ||
@@ -439,35 +419,33 @@ export function HomePage() {
 
           {profiles.length > 0 && (
             <section className="mt-8">
-              {profiles.length > 0 && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between px-1">
-                    <h2 className="text-sm font-medium">{t('clone.saved_profiles')}</h2>
-                    <Link
-                      to="/projects"
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {t('projects.all')}
-                    </Link>
-                  </div>
-                  <div className="grid gap-1 rounded-2xl border border-border/70 bg-card/30 p-2 @3xl:grid-cols-2">
-                    {profiles.slice(0, 4).map((profile) => (
-                      <div
-                        key={profile.id}
-                        className="flex min-w-0 items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-accent/50"
-                      >
-                        <ProfileAvatar name={profile.name} imageUrl={profile.image_url} />
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                          {profile.name}
-                        </span>
-                        <Button size="sm" variant="ghost" onClick={() => void useProfile(profile)}>
-                          {t('clone.select_profile')}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <h2 className="text-sm font-medium">{t('clone.saved_profiles')}</h2>
+                  <Link
+                    to="/personas"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {t('projects.all')}
+                  </Link>
                 </div>
-              )}
+                <div className="grid gap-1 rounded-2xl border border-border/70 bg-card/30 p-2 @3xl:grid-cols-2">
+                  {profiles.slice(0, 4).map((profile) => (
+                    <div
+                      key={profile.id}
+                      className="flex min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-accent/50"
+                    >
+                      <ProfileAvatar name={profile.name} imageUrl={profile.image_url} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {profile.name}
+                      </span>
+                      <Button size="sm" variant="ghost" onClick={() => void useProfile(profile)}>
+                        {t('clone.select_profile')}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
         </div>

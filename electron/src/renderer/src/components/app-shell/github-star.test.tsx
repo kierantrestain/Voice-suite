@@ -31,7 +31,9 @@ it('keeps the preview badge offline when requested', async () => {
   const fetchCount = vi.fn();
   vi.stubGlobal('fetch', fetchCount);
   const client = mount();
-  expect(screen.getByText('43.6K')).toBeVisible();
+  // No upstream figure is bundled: offline, the badge shows no count at all.
+  expect(screen.getByRole('link', { name: 'support.star_github' })).toBeVisible();
+  expect(document.querySelector('.github-star-count')).toBeNull();
   expect(fetchCount).not.toHaveBeenCalled();
   client.clear();
 });
@@ -45,14 +47,14 @@ it('shows an exact live count and refreshes it every 20 minutes', async () => {
   vi.useFakeTimers();
   const client = mount();
 
-  expect(screen.getByText('43.6K')).toBeVisible();
+  expect(document.querySelector('.github-star-count')).toBeNull();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1);
   });
   expect(screen.getByText('43.8K')).toBeVisible();
   expect(fetchCount).toHaveBeenCalledOnce();
   expect(fetchCount.mock.calls[0][0]).toBe(
-    'https://api.github.com/repos/debpalash/VoiceStudio',
+    'https://api.github.com/repos/kierantrestain/Voice-suite',
   );
   expect(fetchCount.mock.calls[0][1]).toMatchObject({
     credentials: 'omit',
@@ -70,7 +72,7 @@ it('shows an exact live count and refreshes it every 20 minutes', async () => {
   await waitFor(() => expect(screen.getByText('43.9K')).toBeVisible());
   expect(screen.getByRole('link', { name: 'support.star_github' })).toHaveAttribute(
     'href',
-    'https://github.com/debpalash/VoiceStudio',
+    'https://github.com/kierantrestain/Voice-suite',
   );
   client.clear();
 });
@@ -95,13 +97,13 @@ it('keeps the last live count when a later request fails', async () => {
   client.clear();
 });
 
-it('shows the bundled count if the first request is offline', async () => {
+it('shows no count if the first request is offline', async () => {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
   vi.useFakeTimers();
   const client = mount();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1);
   });
-  expect(screen.getByText('43.6K')).toBeVisible();
+  expect(document.querySelector('.github-star-count')).toBeNull();
   client.clear();
 });

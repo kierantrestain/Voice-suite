@@ -1181,8 +1181,8 @@
               exit 1
             fi
             productName=$(node -p "require('$resources/app/package.json').productName" 2>/dev/null || echo none)
-            if [ "$productName" != "VoiceStudio" ]; then
-              echo "packaged productName is $productName; userData would leave the AppImage's folder"
+            if [ "$productName" != "Voice Suite" ]; then
+              echo "packaged productName is $productName; expected Voice Suite"
               exit 1
             fi
 

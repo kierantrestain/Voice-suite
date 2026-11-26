@@ -46,7 +46,7 @@ try {
         name: "Workspaces",
       });
       assert.equal(await compactNav.getByRole("button").count(), 3);
-      assert.equal(await compactNav.getByRole("link").count(), 5);
+      assert.equal(await compactNav.getByRole("link").count(), 7);
       assert.equal(
         await page.locator(".brand-sidebar:not([data-slot=compact-main-sidebar])")
           .count(),
