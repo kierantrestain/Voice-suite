@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useRecording } from '@/hooks/use-recording';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { prepareCloudRecording } from './audio';
 
 export function RecordingInput({
   file,
@@ -16,14 +17,27 @@ export function RecordingInput({
   const { t } = useTranslation();
   const recorder = useRecording(onFile, false, { clean: false, maxSeconds: 65 });
   const [url, setUrl] = useState<string>();
+  const [invalidAudio, setInvalidAudio] = useState(false);
   useEffect(() => {
-    if (!file) {
-      setUrl(undefined);
-      return;
-    }
-    const next = URL.createObjectURL(file);
-    setUrl(next);
-    return () => URL.revokeObjectURL(next);
+    setUrl(undefined);
+    setInvalidAudio(false);
+    if (!file) return;
+    let active = true;
+    let preview: string | undefined;
+    // Only decoded PCM audio is published to the page as a blob URL.
+    void prepareCloudRecording(file)
+      .then((wave) => {
+        if (!active) return;
+        preview = URL.createObjectURL(wave);
+        setUrl(preview);
+      })
+      .catch(() => {
+        if (active) setInvalidAudio(true);
+      });
+    return () => {
+      active = false;
+      if (preview) URL.revokeObjectURL(preview);
+    };
   }, [file]);
   return (
     <div className="space-y-2">
@@ -50,6 +64,11 @@ export function RecordingInput({
           }}
         />
       </div>
+      {invalidAudio && (
+        <p role="alert" className="text-sm text-destructive">
+          {t('studioCloud.invalidRecording')}
+        </p>
+      )}
       {url && (
         <audio className="w-full" controls src={url} aria-label={t('clone.reference_audio')} />
       )}
