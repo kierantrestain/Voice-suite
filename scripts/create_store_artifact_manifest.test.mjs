@@ -48,3 +48,37 @@ test("records the checked-out commit unless an explicit commit is provided", () 
   assert.equal(resolveSourceCommit(""), head);
   assert.equal(resolveSourceCommit("f".repeat(40)), "f".repeat(40));
 });
+
+test("records Voice-Suite direct installers and beta/stable updater feeds", () => {
+  const directory = mkdtempSync(join(tmpdir(), "voicesuite-direct-manifest-"));
+  try {
+    writeFileSync(join(directory, "Voice-Suite-0.6.0-mac-arm64.dmg"), "dmg");
+    writeFileSync(join(directory, "Voice-Suite-0.6.0-mac-arm64.zip"), "zip");
+    writeFileSync(join(directory, "electron-stable-darwin-arm64-mac.yml"), "version: 0.6.0\n");
+    writeFileSync(join(directory, "electron-beta-darwin-arm64-mac.yml"), "version: 0.6.0-beta.1\n");
+    writeFileSync(join(directory, "Voice-Suite-MacAppStore-0.6.0-mac-arm64.pkg"), "mas");
+    writeFileSync(join(directory, "notes.txt"), "ignore");
+    const output = join(directory, "manifest.json");
+    const manifest = createArtifactManifest({
+      releaseDir: directory,
+      output,
+      distribution: "direct",
+      platform: "darwin",
+      arch: "arm64",
+      version: "0.6.0",
+      commit: "0123456789abcdef",
+      generatedAt: "2026-11-26T00:00:00.000Z",
+    });
+    assert.deepEqual(
+      manifest.artifacts.map((artifact) => artifact.file),
+      [
+        "Voice-Suite-0.6.0-mac-arm64.dmg",
+        "Voice-Suite-0.6.0-mac-arm64.zip",
+        "electron-beta-darwin-arm64-mac.yml",
+        "electron-stable-darwin-arm64-mac.yml",
+      ],
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

@@ -132,7 +132,7 @@ def beta_links(body: str, version: str) -> str:
     base = version.split("-", 1)[0]
     stable = re.escape(base)
     body = re.sub(rf"(/releases/(?:download|tag)/)v{stable}(?=[/)\s\]]|$)", rf"\g<1>v{version}", body, flags=re.M)
-    return re.sub(rf"\bVoiceStudio-{stable}-", f"VoiceStudio-{version}-", body)
+    return re.sub(rf"\b(Voice-Suite|VoiceStudio)-{stable}-", rf"\g<1>-{version}-", body)
 
 
 def sh(*cmd: str, check: bool = True, capture: bool = False) -> str:

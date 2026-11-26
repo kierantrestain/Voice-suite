@@ -12,9 +12,14 @@ import {
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ARTIFACT_PREFIX } from "../config/app-config.mjs";
 import { distributionProfile, resolveDistributionTarget } from "../config/distributions.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function sha256File(path) {
   const hash = createHash("sha256");
@@ -32,22 +37,23 @@ function sha256File(path) {
   return hash.digest("hex");
 }
 
-function releaseArtifact(name, distribution) {
-  // Direct and Snap packages are `VoiceStudio-<version>-…`; store builds carry a label.
+function releaseArtifact(name, distribution, artifactPrefix = ARTIFACT_PREFIX) {
+  const prefixes = [...new Set([artifactPrefix, "VoiceStudio"])].map(escapeRegex).join("|");
+  // Direct and Snap packages are `<prefix>-<version>-…`; store builds carry a label.
   const installer =
     {
-      "microsoft-store": /^VoiceStudio-MicrosoftStore-/,
-      "mac-app-store": /^VoiceStudio-MacAppStore-/,
-    }[distribution] ?? /^VoiceStudio-\d/;
-  const updatePrefix =
+      "microsoft-store": new RegExp(`^(?:${prefixes})-MicrosoftStore-`),
+      "mac-app-store": new RegExp(`^(?:${prefixes})-MacAppStore-`),
+    }[distribution] ?? new RegExp(`^(?:${prefixes})-\\d`);
+  const updatePrefixes =
     distribution === "microsoft-store"
-      ? "electron-microsoft-store-stable-"
+      ? ["electron-microsoft-store-stable-"]
       : distribution === "direct"
-        ? "electron-stable-"
-        : null;
+        ? ["electron-stable-", "electron-beta-"]
+        : [];
   return (
     installer.test(name) ||
-    (updatePrefix !== null && name.startsWith(updatePrefix) && name.endsWith(".yml"))
+    (name.endsWith(".yml") && updatePrefixes.some((prefix) => name.startsWith(prefix)))
   );
 }
 
